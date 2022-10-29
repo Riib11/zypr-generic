@@ -35,10 +35,10 @@ export function zipUp<Meta, Rule>(zip: Zipper<Meta, Rule>):
 
 export function zipLeft<Meta, Rule>(
   exp: Expression<Meta, Rule>,
-  zip: Zipper<Meta, Rule>,
+  zipRev: Zipper<Meta, Rule>,
 ):
   [Expression<Meta, Rule>, Zipper<Meta, Rule>] | undefined {
-  const step = zip.get(0);
+  const step = zipRev.get(0);
   if (step === undefined) return undefined;
 
   const sibLeft = step.leftsRev.get(0);
@@ -46,7 +46,7 @@ export function zipLeft<Meta, Rule>(
 
   return [
     sibLeft,
-    zip.shift().unshift(
+    zipRev.shift().unshift(
       step
         .set('leftsRev', step.leftsRev.shift())
         .set('rights', step.rights.unshift(exp))
@@ -55,10 +55,10 @@ export function zipLeft<Meta, Rule>(
 
 export function zipRight<Meta, Rule>(
   exp: Expression<Meta, Rule>,
-  zip: Zipper<Meta, Rule>
+  zipRev: Zipper<Meta, Rule>
 ):
   [Expression<Meta, Rule>, Zipper<Meta, Rule>] | undefined {
-  const step = zip.get(0);
+  const step = zipRev.get(0);
   if (step === undefined) return undefined;
 
   const sibRight = step.rights.get(0);
@@ -66,7 +66,7 @@ export function zipRight<Meta, Rule>(
 
   return [
     sibRight,
-    zip.shift().unshift(
+    zipRev.shift().unshift(
       step
         .set('leftsRev', step.leftsRev.unshift(exp))
         .set('rights', step.rights.shift())
@@ -75,9 +75,22 @@ export function zipRight<Meta, Rule>(
 
 export function zipDown<Meta, Rule>(
   i: number,
+  zipRev: Zipper<Meta, Rule>
+):
+  [Step<Meta, Rule>, Zipper<Meta, Rule>] | undefined {
+
+  const step = zipRev.get(0);
+  if (step === undefined) return undefined;
+  return [
+    step,
+    zipRev.shift()
+  ];
+}
+export function zipDownExp<Meta, Rule>(
+  i: number,
   exp: Expression<Meta, Rule>
 ):
-  [Expression<Meta, Rule>, Step<Meta, Rule>] | undefined {
+  [Step<Meta, Rule>, Expression<Meta, Rule>] | undefined {
 
   const expChild = exp.exps.get(i);
   if (expChild === undefined) return undefined;
@@ -85,12 +98,12 @@ export function zipDown<Meta, Rule>(
   const rights = exp.exps.slice(i + 1, undefined);
 
   return [
-    expChild,
     makeStep({
       meta: exp.meta,
       rule: exp.rule,
       leftsRev,
       rights
-    })
+    }),
+    expChild
   ];
 }

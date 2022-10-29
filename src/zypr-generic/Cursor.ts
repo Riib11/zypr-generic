@@ -1,10 +1,10 @@
 import { Record, RecordOf } from "immutable";
 import { Expression } from "./Expression";
-import { zipLeft, zipRight, wrap, Zipper, zipDown, zipUp } from "./Zipper";
+import { zipLeft, zipRight, wrap, Zipper, zipDownExp, zipUp } from "./Zipper";
 
 export type CursorProps<Meta, Rule> = {
+  zip: Zipper<Meta, Rule>,
   exp: Expression<Meta, Rule>,
-  zip: Zipper<Meta, Rule>
 }
 
 export type Cursor<Meta, Rule> = RecordOf<CursorProps<Meta, Rule>>;
@@ -40,9 +40,9 @@ function moveRightCursor<Meta, Rule>(cursor: Cursor<Meta, Rule>): Cursor<Meta, R
 }
 
 function moveDownCursor<Meta, Rule>(i: number, cursor: Cursor<Meta, Rule>): Cursor<Meta, Rule> | undefined {
-  const res = zipDown(i, cursor.exp);
+  const res = zipDownExp(i, cursor.exp);
   if (res === undefined) return undefined;
-  const [exp, step] = res;
+  const [step, exp] = res;
   return cursor
     .set('exp', exp)
     .set('zip', cursor.zip.unshift(step));
