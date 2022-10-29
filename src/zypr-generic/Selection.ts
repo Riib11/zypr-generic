@@ -1,6 +1,6 @@
 import { Record, RecordOf } from "immutable";
 import { Expression, printExpression } from "./Expression";
-import { PrintGrammar } from "./Grammar";
+import { GrammarPrinter } from "./Grammar";
 import { printZipper, wrapExp, wrapExpStep, zipDown, zipDownExp, zipLeft, Zipper, zipRight, zipUp } from "./Zipper";
 
 export type SelectProps<Meta, Rule> = {
@@ -105,7 +105,7 @@ function moveDownSelect<Meta, Rule>(i: number, select: Select<Meta, Rule>): Sele
   }
 }
 
-export function showSelect<Meta, Rule>(showGrammar: PrintGrammar<Meta, Rule>, select: Select<Meta, Rule>): string {
+export function showSelect<Meta, Rule>(showGrammar: GrammarPrinter<Meta, Rule>, select: Select<Meta, Rule>): string {
   return (
     printZipper(showGrammar, select.zipTop)
       (printZipper(showGrammar, fixZipBot(select.orient, select.zipBot))

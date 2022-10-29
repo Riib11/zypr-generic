@@ -1,6 +1,6 @@
 import { Record, RecordOf } from "immutable";
 import { Expression, printExpression, showExpression } from "./Expression";
-import { PrintGrammar } from "./Grammar";
+import { GrammarPrinter } from "./Grammar";
 import { zipLeft, zipRight, wrapExp, Zipper, zipDownExp, zipUp, printZipper, wrapExpStep, showZipper } from "./Zipper";
 
 export type CursorProps<Meta, Rule> = {
@@ -49,10 +49,11 @@ export function moveDownCursor<Meta, Rule>(i: number, cursor: Cursor<Meta, Rule>
     .set('zip', cursor.zip.unshift(step));
 }
 
-export function printCursor<Meta, Rule>(printGrammar: PrintGrammar<Meta, Rule>, cursor: Cursor<Meta, Rule>): string {
+export function printCursor<Meta, Rule>(grammarPrinter: GrammarPrinter<Meta, Rule>, cursor: Cursor<Meta, Rule>): string {
   return (
-    printZipper(printGrammar, cursor.zip)
-      ("{" + printExpression(printGrammar, cursor.exp)) + "}");
+    printZipper(grammarPrinter, cursor.zip)
+      ("{" + printExpression(grammarPrinter, cursor.exp) + "}")
+  );
 }
 
 export function showCursor<Meta, Rule>(cursor: Cursor<Meta, Rule>): string {

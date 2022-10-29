@@ -6,4 +6,6 @@ body {}
 
 .editor {
   padding: 4rem;
+
+  white-space: pre;
 }

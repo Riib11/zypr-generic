@@ -1,6 +1,6 @@
 import { List, Record, RecordOf } from "immutable";
 import { Expression, makeExpression, printExpression, showExpression } from "./Expression";
-import { PrintGrammar as PrintGrammar } from "./Grammar";
+import { GrammarPrinter as GrammarPrinter } from "./Grammar";
 
 export type Zipper<Meta, Rule> = List<Step<Meta, Rule>>;
 
@@ -116,27 +116,27 @@ export function zipDownExp<Meta, Rule>(
 }
 
 export function printZipper<Meta, Rule>(
-  printGrammar: PrintGrammar<Meta, Rule>,
+  grammarPrinter: GrammarPrinter<Meta, Rule>,
   zip: Zipper<Meta, Rule>,
 ): (str: string) => string {
   return (str: string) => {
     let step = zip.get(0);
     if (step === undefined) return str;
     return (
-      printZipper(printGrammar, zip.shift())
-        (printStep(printGrammar, step)(str)));
+      printZipper(grammarPrinter, zip.shift())
+        (printStep(grammarPrinter, step)(str)));
   }
 }
 
 export function printStep<Meta, Rule>(
-  printGrammar: PrintGrammar<Meta, Rule>,
+  grammarPrinter: GrammarPrinter<Meta, Rule>,
   step: Step<Meta, Rule>,
 ): (str: string) => string {
   return (str: string) =>
-    printGrammar(step.meta, step.rule)
-      (step.leftsRev.reverse().map(e => printExpression(printGrammar, e)).
+    grammarPrinter(step.meta, step.rule)
+      (step.leftsRev.reverse().map(e => printExpression(grammarPrinter, e)).
         concat([str]).
-        concat(step.rights.map(e => printExpression(printGrammar, e))));
+        concat(step.rights.map(e => printExpression(grammarPrinter, e))));
 }
 
 export function showZipper<Meta, Rule>(zip: Zipper<Meta, Rule>): (str: string) => string {
