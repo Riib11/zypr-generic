@@ -36,21 +36,55 @@ export default class App extends React.Component<AppProps, AppState> {
           }
         }
       }),
-      grammarPrinter: (meta, rule) => (children) => {
-        switch (meta) {
-          case 'exp': {
-            switch (rule.case) {
-              case 'var': return {
-                exp: makeExpression({ meta, rule, exps: children.map(child => child.exp) }),
-                str: rule.label
-              };
-              case 'app': return {
-                exp: makeExpression({ meta, rule, exps: children.map(child => child.exp) }),
-                str: `(${children.get(0)?.str} ${children.get(1)?.str})`
-              };
+      editorPrinter: {
+        grammarDisplayer: (meta, rule) => (children) => {
+          switch (meta) {
+            case 'exp': {
+              switch (rule.case) {
+                case 'var': return {
+                  exp: makeExpression({ meta, rule, exps: children.map(child => child.exp) }),
+                  out: rule.label
+                };
+                case 'app': return {
+                  exp: makeExpression({ meta, rule, exps: children.map(child => child.exp) }),
+                  out: `(${children.get(0)?.out} ${children.get(1)?.out})`
+                };
+              }
             }
           }
-        }
+        },
+        wrapCursorExp: out => "{" + out + "}",
+        wrapSelectTop: out => "{" + out + "}",
+        wrapSelectBot: out => "{" + out + "}"
+      },
+      editorRenderer: {
+        grammarDisplayer: (meta, rule) => (children) => {
+          switch (meta) {
+            case 'exp': {
+              switch (rule.case) {
+                case 'var': return {
+                  exp: makeExpression({ meta, rule, exps: children.map(child => child.exp) }),
+                  out: (
+                    <div className="exp exp-var">
+                      {rule.label}
+                    </div>
+                  )
+                };
+                case 'app': return {
+                  exp: makeExpression({ meta, rule, exps: children.map(child => child.exp) }),
+                  out: (
+                    <div className="exp exp-app">
+                      ({children.get(0)?.out} {children.get(1)?.out})
+                    </div>
+                  )
+                };
+              }
+            }
+          }
+        },
+        wrapCursorExp: out => (<div className="cursor">{out}</div>),
+        wrapSelectTop: out => (<div className="select select-top">{out}</div>),
+        wrapSelectBot: out => (<div className="select select-bot">{out}</div>)
       },
       mode: {
         case: 'cursor',

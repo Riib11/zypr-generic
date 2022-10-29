@@ -1,6 +1,6 @@
 import { Record, RecordOf } from "immutable";
-import { Expression, GrammarPrinter, GrammarPrinterChild, printExpression } from "./Grammar";
-import { printZipper, wrapExpStep, zipDown, zipDownExp, zipLeft, Zipper, zipRight, zipUp } from "./Zipper";
+import { Expression, GrammarDisplayer, GrammarDisplayerChild, displayExpression } from "./Grammar";
+import { displayZipper, wrapExpStep, zipDown, zipDownExp, zipLeft, Zipper, zipRight, zipUp } from "./Zipper";
 
 export type SelectProps<Meta, Rule> = {
   zipTop: Zipper<Meta, Rule>,
@@ -104,8 +104,8 @@ export function moveDownSelect<Meta, Rule>(i: number, select: Select<Meta, Rule>
   }
 }
 
-export function printSelect<Meta, Rule>(showGrammar: GrammarPrinter<Meta, Rule>, select: Select<Meta, Rule>): GrammarPrinterChild<Meta, Rule> {
-  const { exp: exp0, str: str0 } = printExpression(showGrammar, select.exp);
-  const { exp: exp1, str: str1 } = printZipper(showGrammar, fixZipBot(select.orient, select.zipBot))({ exp: exp0, str: "{" + str0 + "}" });
-  return printZipper(showGrammar, select.zipTop)({ exp: exp1, str: "{" + str1 + "}" });
+export function displaySelect<Meta, Rule, A>(displayGrammar: GrammarDisplayer<Meta, Rule, A>, wrapZip: (out: A) => A, wrapExp: (out: A) => A, select: Select<Meta, Rule>): GrammarDisplayerChild<Meta, Rule, A> {
+  const { exp: exp0, out: out0 } = displayExpression(displayGrammar, select.exp);
+  const { exp: exp1, out: out1 } = displayZipper(displayGrammar, fixZipBot(select.orient, select.zipBot))({ exp: exp0, out: wrapExp(out0) });
+  return displayZipper(displayGrammar, select.zipTop)({ exp: exp1, out: wrapZip(out1) });
 }

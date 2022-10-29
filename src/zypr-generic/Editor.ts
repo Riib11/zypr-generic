@@ -1,7 +1,7 @@
 import { List, Record, RecordOf } from "immutable";
-import { Cursor, makeCursor, moveDownCursor, moveLeftCursor, moveRightCursor, moveUpCursor, printCursor } from "./Cursor";
-import { Grammar, GrammarPrinter } from "./Grammar";
-import { fixZipBot, moveDownSelect, moveLeftSelect, moveRightSelect, moveUpSelect, Select, printSelect, SelectOrientation, makeSelect } from "./Selection";
+import { Cursor, displayCursor, makeCursor, moveDownCursor, moveLeftCursor, moveRightCursor, moveUpCursor } from "./Cursor";
+import { Grammar, GrammarDisplayer } from "./Grammar";
+import { fixZipBot, moveDownSelect, moveLeftSelect, moveRightSelect, moveUpSelect, Select, SelectOrientation, makeSelect, displaySelect } from "./Selection";
 import { wrapExp } from "./Zipper";
 
 export type Mode<Meta, Rule>
@@ -18,9 +18,17 @@ export type SelectMode<Meta, Rule> = {
   select: Select<Meta, Rule>
 }
 
+export type EditorDisplayer<Meta, Rule, A> = {
+  grammarDisplayer: GrammarDisplayer<Meta, Rule, A>,
+  wrapCursorExp: (out: A) => A,
+  wrapSelectTop: (out: A) => A,
+  wrapSelectBot: (out: A) => A
+}
+
 export type EditorProps<Meta, Rule> = {
   grammar: Grammar<Meta, Rule>,
-  grammarPrinter: GrammarPrinter<Meta, Rule>,
+  editorPrinter: EditorDisplayer<Meta, Rule, string>,
+  editorRenderer: EditorDisplayer<Meta, Rule, JSX.Element>,
   mode: Mode<Meta, Rule>
 }
 
@@ -28,13 +36,22 @@ export type Editor<Meta, Rule> = RecordOf<EditorProps<Meta, Rule>>;
 
 export function makeEditor<Meta, Rule>(props: EditorProps<Meta, Rule>): Editor<Meta, Rule> { return Record(props)(); }
 
-export function printEditor<Meta, Rule>(editor: Editor<Meta, Rule>): string {
+export function printEditor<Meta, Rule, A>(editor: Editor<Meta, Rule>): string {
   switch (editor.mode.case) {
     case 'cursor': {
-      return printCursor(editor.grammarPrinter, editor.mode.cursor).str;
+      return displayCursor(
+        editor.editorPrinter.grammarDisplayer,
+        editor.editorPrinter.wrapCursorExp,
+        editor.mode.cursor
+      ).out;
     }
     case 'select': {
-      return printSelect(editor.grammarPrinter, editor.mode.select).str;
+      return displaySelect(
+        editor.editorPrinter.grammarDisplayer,
+        editor.editorPrinter.wrapSelectTop,
+        editor.editorPrinter.wrapSelectBot,
+        editor.mode.select
+      ).out;
     }
   }
 }
@@ -45,7 +62,7 @@ export function printEditor<Meta, Rule>(editor: Editor<Meta, Rule>): string {
 //       return showCursor(editor.mode.cursor);
 //     }
 //     case 'select': {
-//       // return printSelect(editor.mode.select);
+//       // return displaySelect(editor.mode.select);
 //       throw new Error("TODO: showEditor");
 
 //     }

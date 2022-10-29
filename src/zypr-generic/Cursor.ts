@@ -1,6 +1,6 @@
 import { Record, RecordOf } from "immutable";
-import { Expression, GrammarPrinter, GrammarPrinterChild, printExpression } from "./Grammar";
-import { zipLeft, zipRight, Zipper, zipDownExp, zipUp, printZipper, wrapExpStep } from "./Zipper";
+import { displayExpression, Expression, GrammarDisplayer, GrammarDisplayerChild } from "./Grammar";
+import { zipLeft, zipRight, Zipper, zipDownExp, zipUp, wrapExpStep, displayZipper } from "./Zipper";
 
 export type CursorProps<Meta, Rule> = {
   zip: Zipper<Meta, Rule>,
@@ -48,14 +48,8 @@ export function moveDownCursor<Meta, Rule>(i: number, cursor: Cursor<Meta, Rule>
     .set('zip', cursor.zip.unshift(step));
 }
 
-export function printCursor<Meta, Rule>(grammarPrinter: GrammarPrinter<Meta, Rule>, cursor: Cursor<Meta, Rule>): GrammarPrinterChild<Meta, Rule> {
-  const { exp, str } = printExpression(grammarPrinter, cursor.exp);
-  return printZipper(grammarPrinter, cursor.zip)
-    ({ exp, str: "{" + str + "}" });
+export function displayCursor<Meta, Rule, A>(grammarDisplayer: GrammarDisplayer<Meta, Rule, A>, wrapExp: (out: A) => A, cursor: Cursor<Meta, Rule>): GrammarDisplayerChild<Meta, Rule, A> {
+  const { exp, out } = displayExpression(grammarDisplayer, cursor.exp);
+  return displayZipper(grammarDisplayer, cursor.zip)
+    ({ exp, out: wrapExp(out) });
 }
-
-// export function showCursor<Meta, Rule>(cursor: Cursor<Meta, Rule>): string {
-//   return (
-//     showZipper(cursor.zip)
-//       ("{" + showExpression(cursor.exp)) + "}");
-// }
