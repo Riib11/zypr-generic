@@ -1,6 +1,5 @@
 import { List, Record, RecordOf } from "immutable";
-import { Expression, makeExpression, printExpression, showExpression } from "./Expression";
-import { GrammarPrinter as GrammarPrinter } from "./Grammar";
+import { Expression, GrammarPrinter, GrammarPrinterChild, makeExpression, printExpression } from "./Grammar";
 
 export type Zipper<Meta, Rule> = List<Step<Meta, Rule>>;
 
@@ -118,42 +117,45 @@ export function zipDownExp<Meta, Rule>(
 export function printZipper<Meta, Rule>(
   grammarPrinter: GrammarPrinter<Meta, Rule>,
   zip: Zipper<Meta, Rule>,
-): (str: string) => string {
-  return (str: string) => {
+): (child: GrammarPrinterChild<Meta, Rule>) => GrammarPrinterChild<Meta, Rule> {
+  return ({ exp, str }) => {
     let step = zip.get(0);
-    if (step === undefined) return str;
+    if (step === undefined) return { exp, str };
     return (
       printZipper(grammarPrinter, zip.shift())
-        (printStep(grammarPrinter, step)(str)));
+        (printStep(grammarPrinter, step)({ exp, str })));
   }
 }
 
 export function printStep<Meta, Rule>(
   grammarPrinter: GrammarPrinter<Meta, Rule>,
   step: Step<Meta, Rule>,
-): (str: string) => string {
-  return (str: string) =>
+): (child: GrammarPrinterChild<Meta, Rule>) => GrammarPrinterChild<Meta, Rule> {
+  return ({ exp, str }) =>
     grammarPrinter(step.meta, step.rule)
-      (step.leftsRev.reverse().map(e => printExpression(grammarPrinter, e)).
-        concat([str]).
-        concat(step.rights.map(e => printExpression(grammarPrinter, e))));
+      (step.leftsRev.reverse().map(e => printExpression(grammarPrinter, e))
+        .concat(List<GrammarPrinterChild<Meta, Rule>>([{ exp, str }]))
+        .concat(step.rights.map(e => printExpression(grammarPrinter, e)))
+      );
 }
 
-export function showZipper<Meta, Rule>(zip: Zipper<Meta, Rule>): (str: string) => string {
-  return (str: string) => {
-    let step = zip.get(0);
-    if (step === undefined) return str;
-    return showZipper(zip.shift())(showStep(step)(str));
-  }
-}
+// export function showZipper<Meta, Rule>(zip: Zipper<Meta, Rule>): 
+// (child: GrammarPrinterChild<Meta, Rule>) => GrammarPrinterChild<Meta, Rule> {
+//   return ([exp, str]) => {
+//     let step = zip.get(0);
+//     if (step === undefined) return str;
+//     return showZipper(zip.shift())(showStep(step)(str));
+//   }
+// }
 
-export function showStep<Meta, Rule>(step: Step<Meta, Rule>): (str: string) => string {
-  return (str: string) =>
-    "Z(" +
-    "meta:" + step.meta + " " +
-    "rule:" + step.rule + " " +
-    "lefts:[" + step.leftsRev.reverse().map(e => showExpression(e)).join(" ") + "]" + " " +
-    "str:" + str + " " +
-    "rights:[" + step.rights.map(e => showExpression(e)).join(" ") + "]" + " " +
-    ")";
-}
+// export function showStep<Meta, Rule>(step: Step<Meta, Rule>):
+//  (child: GrammarPrinterChild<Meta, Rule>) => GrammarPrinterChild<Meta, Rule> {
+//   return ([exp, str]) =>
+//     "Z(" +
+//     "meta:" + step.meta + " " +
+//     "rule:" + step.rule + " " +
+//     "lefts:[" + step.leftsRev.reverse().map(e => showExpression(e)).join(" ") + "]" + " " +
+//     "str:" + str + " " +
+//     "rights:[" + step.rights.map(e => showExpression(e)).join(" ") + "]" + " " +
+//     ")";
+// }

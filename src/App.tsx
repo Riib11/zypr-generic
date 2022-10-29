@@ -1,9 +1,9 @@
-import { List, Map } from 'immutable';
-import React, { KeyboardEventHandler, useState } from 'react';
+import { List } from 'immutable';
+import React from 'react';
 import './App.css';
 import { makeCursor } from './zypr-generic/Cursor';
-import { Editor, makeEditor, Mode, moveDown, moveLeft, moveRight, moveUp, printEditor, showEditor } from './zypr-generic/Editor';
-import { Expression, makeExpression } from './zypr-generic/Expression';
+import { Editor, escapeSelect, makeEditor, moveEditorCursorDown, moveEditorCursorLeft, moveEditorCursorRight, moveEditorCursorUp, moveEditorSelectDown, moveEditorSelectLeft, moveEditorSelectRight, moveEditorSelectUp, printEditor } from './zypr-generic/Editor';
+import { Expression, makeExpression } from './zypr-generic/Grammar';
 
 type Meta1 = 'exp';
 type Rule1
@@ -26,7 +26,7 @@ type AppState = {
 export default class App extends React.Component<AppProps, AppState> {
   state = {
     editor: makeEditor<Meta1, Rule1>({
-      grammar: ((meta: Meta1) => (rule: Rule1) => {
+      grammar: ((meta) => (rule) => {
         switch (meta) {
           case 'exp': {
             switch (rule.case) {
@@ -36,12 +36,18 @@ export default class App extends React.Component<AppProps, AppState> {
           }
         }
       }),
-      grammarPrinter: (meta: Meta1, rule: Rule1) => (exps: List<string>) => {
+      grammarPrinter: (meta, rule) => (children) => {
         switch (meta) {
           case 'exp': {
             switch (rule.case) {
-              case 'var': return rule.label;
-              case 'app': return `(${exps.get(0)} ${exps.get(1)})`;
+              case 'var': return {
+                exp: makeExpression({ meta, rule, exps: children.map(child => child.exp) }),
+                str: rule.label
+              };
+              case 'app': return {
+                exp: makeExpression({ meta, rule, exps: children.map(child => child.exp) }),
+                str: `(${children.get(0)?.str} ${children.get(1)?.str})`
+              };
             }
           }
         }
@@ -96,17 +102,34 @@ export default class App extends React.Component<AppProps, AppState> {
   keyboardEventListener = (event: KeyboardEvent): any => {
     console.log(event.key);
     if (event.key === 'ArrowUp') {
-      this.updateEditor(moveUp);
+      if (event.shiftKey) {
+        this.updateEditor(moveEditorSelectUp);
+      } else {
+        this.updateEditor(moveEditorCursorUp);
+      }
     } else if (event.key === 'ArrowDown') {
-      this.updateEditor(moveDown);
+      if (event.shiftKey) {
+        this.updateEditor(moveEditorSelectDown);
+      } else {
+        this.updateEditor(moveEditorCursorDown);
+      }
     } else if (event.key === 'ArrowLeft') {
-      this.updateEditor(moveLeft);
+      if (event.shiftKey) {
+        this.updateEditor(moveEditorSelectLeft);
+      } else {
+        this.updateEditor(moveEditorCursorLeft);
+      }
     } else if (event.key === 'ArrowRight') {
-      this.updateEditor(moveRight);
+      if (event.shiftKey) {
+        this.updateEditor(moveEditorSelectRight);
+      } else {
+        this.updateEditor(moveEditorCursorRight);
+      }
+    } else if (event.key === 'Escape') {
+      this.updateEditor(escapeSelect);
     } else if (event.key === 'z' && event.ctrlKey) {
       this.undoEditor();
     } else if (event.key === 'Z' && event.ctrlKey) {
-      console.log("hello")
       this.redoEditor();
     }
   }
@@ -120,29 +143,6 @@ export default class App extends React.Component<AppProps, AppState> {
   }
 
   render() {
-    if (this.state.editor.mode.case === 'cursor') {
-      console.log(this.state.editor.mode.cursor.toJS());
-    }
-
-    // return (
-    //   <div className='app'>
-    //     <div className='editor'>
-    //       future:<br />
-    //       {this.state.future.map(
-    //         editor => <div>{printEditor(editor)}</div>
-    //       ).toArray()}
-    //       <br />
-    //       editor:<br />
-    //       <div>{printEditor(this.state.editor)}</div>
-    //       <br />
-    //       history:<br />
-    //       {this.state.history.map(
-    //         editor => <div>{printEditor(editor)}</div>
-    //       ).toArray()}
-    //     </div>
-    //   </div>
-    // );
-
     return (
       <div className='app'>
         <div className='editor'>
