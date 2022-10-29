@@ -1,7 +1,7 @@
 import { List, Record, RecordOf } from "immutable";
-import { Cursor, makeCursor, moveDownCursor, moveUpCursor, showCursor } from "./Cursor";
+import { Cursor, makeCursor, moveDownCursor, moveUpCursor, printCursor, showCursor } from "./Cursor";
 import { Expression } from "./Expression";
-import { Grammar, ShowGrammar } from "./Grammar";
+import { Grammar, PrintGrammar } from "./Grammar";
 import { fixZipBot, Select, showSelect } from "./Selection";
 import { wrap, wrapExp } from "./Zipper";
 
@@ -21,7 +21,7 @@ export type SelectMode<Meta, Rule> = {
 
 export type EditorProps<Meta, Rule> = {
   grammar: Grammar<Meta, Rule>;
-  showGrammar: ShowGrammar<Meta, Rule>;
+  printGrammar: PrintGrammar<Meta, Rule>;
   mode: Mode<Meta, Rule>;
   history: List<Editor<Meta, Rule>>
 }
@@ -30,13 +30,25 @@ export type Editor<Meta, Rule> = RecordOf<EditorProps<Meta, Rule>>;
 
 export function makeEditor<Meta, Rule>(props: EditorProps<Meta, Rule>): Editor<Meta, Rule> { return Record(props)(); }
 
+export function printEditor<Meta, Rule>(editor: Editor<Meta, Rule>): string {
+  switch (editor.mode.case) {
+    case 'cursor': {
+      return printCursor(editor.printGrammar, editor.mode.cursor);
+    }
+    case 'select': {
+      return showSelect(editor.printGrammar, editor.mode.select);
+    }
+  }
+}
+
 export function showEditor<Meta, Rule>(editor: Editor<Meta, Rule>): string {
   switch (editor.mode.case) {
     case 'cursor': {
-      return showCursor(editor.showGrammar, editor.mode.cursor);
+      return showCursor(editor.mode.cursor);
     }
     case 'select': {
-      return showSelect(editor.showGrammar, editor.mode.select);
+      return "TODO: showEditor(editor) when editor.mode.case === 'select'";
+      // return showSelect(editor.showGrammar, editor.mode.select);
     }
   }
 }

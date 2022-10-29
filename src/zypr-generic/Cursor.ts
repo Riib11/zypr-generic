@@ -1,7 +1,7 @@
 import { Record, RecordOf } from "immutable";
-import { Expression, showExpression } from "./Expression";
-import { ShowGrammar } from "./Grammar";
-import { zipLeft, zipRight, wrapExp, Zipper, zipDownExp, zipUp, showZipper, wrapExpStep } from "./Zipper";
+import { Expression, printExpression, showExpression } from "./Expression";
+import { PrintGrammar } from "./Grammar";
+import { zipLeft, zipRight, wrapExp, Zipper, zipDownExp, zipUp, printZipper, wrapExpStep, showZipper } from "./Zipper";
 
 export type CursorProps<Meta, Rule> = {
   zip: Zipper<Meta, Rule>,
@@ -41,7 +41,6 @@ export function moveRightCursor<Meta, Rule>(cursor: Cursor<Meta, Rule>): Cursor<
 }
 
 export function moveDownCursor<Meta, Rule>(i: number, cursor: Cursor<Meta, Rule>): Cursor<Meta, Rule> | undefined {
-  console.log("moveDownCursor")
   const res = zipDownExp(i, cursor.exp);
   if (res === undefined) return undefined;
   const [step, exp] = res;
@@ -50,8 +49,14 @@ export function moveDownCursor<Meta, Rule>(i: number, cursor: Cursor<Meta, Rule>
     .set('zip', cursor.zip.unshift(step));
 }
 
-export function showCursor<Meta, Rule>(showGrammar: ShowGrammar<Meta, Rule>, cursor: Cursor<Meta, Rule>): string {
+export function printCursor<Meta, Rule>(printGrammar: PrintGrammar<Meta, Rule>, cursor: Cursor<Meta, Rule>): string {
   return (
-    showZipper(showGrammar, cursor.zip)
-      ("[" + showExpression(showGrammar, cursor.exp)) + "]");
+    printZipper(printGrammar, cursor.zip)
+      ("{" + printExpression(printGrammar, cursor.exp)) + "}");
+}
+
+export function showCursor<Meta, Rule>(cursor: Cursor<Meta, Rule>): string {
+  return (
+    showZipper(cursor.zip)
+      ("{" + showExpression(cursor.exp)) + "}");
 }

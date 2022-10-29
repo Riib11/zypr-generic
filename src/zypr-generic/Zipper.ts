@@ -1,9 +1,6 @@
-
-import exp from "constants";
 import { List, Record, RecordOf } from "immutable";
-import { Direction } from "./Direction";
-import { Expression, makeExpression, showExpression } from "./Expression";
-import { ShowGrammar } from "./Grammar";
+import { Expression, makeExpression, printExpression, showExpression } from "./Expression";
+import { PrintGrammar as PrintGrammar } from "./Grammar";
 
 export type Zipper<Meta, Rule> = List<Step<Meta, Rule>>;
 
@@ -18,8 +15,6 @@ export type Step<Meta, Rule> = RecordOf<StepProps<Meta, Rule>>
 
 export function makeStep<Meta, Rule>(props: StepProps<Meta, Rule>): Step<Meta, Rule> { return Record(props)(); }
 
-
-
 export function wrap<Meta, Rule>(zipTop: Zipper<Meta, Rule>, zipBot: Zipper<Meta, Rule>): Zipper<Meta, Rule> {
   return zipTop.concat(zipBot);
 }
@@ -29,8 +24,6 @@ export function wrapExp<Meta, Rule>(zip: Zipper<Meta, Rule>, exp: Expression<Met
   if (step === undefined) return exp;
   return wrapExp(zip.shift(), wrapExpStep(step, exp));
 }
-
-
 
 export function wrapExpStep<Meta, Rule>(step: Step<Meta, Rule>, exp: Expression<Meta, Rule>): Expression<Meta, Rule> {
   return makeExpression({
@@ -100,18 +93,16 @@ export function zipDown<Meta, Rule>(
     zipRev.shift()
   ];
 }
+
 export function zipDownExp<Meta, Rule>(
   i: number,
   exp: Expression<Meta, Rule>
 ):
   [Step<Meta, Rule>, Expression<Meta, Rule>] | undefined {
-
-  console.log("zipDownExp")
-
   const expChild = exp.exps.get(i);
   if (expChild === undefined) return undefined;
   const leftsRev = exp.exps.slice(0, i);
-  const rights = exp.exps.slice(i + 1, undefined);
+  const rights = exp.exps.slice(i - 1, undefined);
 
   return [
     makeStep({
@@ -124,27 +115,45 @@ export function zipDownExp<Meta, Rule>(
   ];
 }
 
-export function showZipper<Meta, Rule>(
-  showGrammar: ShowGrammar<Meta, Rule>,
-  zip: Zipper<Meta, Rule>
-): (exp: string) => string {
-  return (exp: string) => {
+export function printZipper<Meta, Rule>(
+  printGrammar: PrintGrammar<Meta, Rule>,
+  zip: Zipper<Meta, Rule>,
+): (str: string) => string {
+  return (str: string) => {
     let step = zip.get(0);
-    if (step === undefined) return exp;
+    if (step === undefined) return str;
     return (
-      showZipper(showGrammar, zip.unshift())
-        (showStep(showGrammar, step)(exp)));
+      printZipper(printGrammar, zip.shift())
+        (printStep(printGrammar, step)(str)));
   }
-
 }
 
-export function showStep<Meta, Rule>(
-  showGrammar: ShowGrammar<Meta, Rule>,
-  step: Step<Meta, Rule>
-): (exp: string) => string {
-  return (exp: string) =>
-    showGrammar(step.meta, step.rule)
-      (step.leftsRev.reverse().map(e => showExpression(showGrammar, e)).
-        concat([exp]).
-        concat(step.rights.map(e => showExpression(showGrammar, e))));
+export function printStep<Meta, Rule>(
+  printGrammar: PrintGrammar<Meta, Rule>,
+  step: Step<Meta, Rule>,
+): (str: string) => string {
+  return (str: string) =>
+    printGrammar(step.meta, step.rule)
+      (step.leftsRev.reverse().map(e => printExpression(printGrammar, e)).
+        concat([str]).
+        concat(step.rights.map(e => printExpression(printGrammar, e))));
+}
+
+export function showZipper<Meta, Rule>(zip: Zipper<Meta, Rule>): (str: string) => string {
+  return (str: string) => {
+    let step = zip.get(0);
+    if (step === undefined) return str;
+    return showZipper(zip.shift())(showStep(step)(str));
+  }
+}
+
+export function showStep<Meta, Rule>(step: Step<Meta, Rule>): (str: string) => string {
+  return (str: string) =>
+    "Z(" +
+    "meta:" + step.meta + " " +
+    "rule:" + step.rule + " " +
+    "lefts:[" + step.leftsRev.reverse().map(e => showExpression(e)).join(" ") + "]" + " " +
+    "str:" + str + " " +
+    "rights:[" + step.rights.map(e => showExpression(e)).join(" ") + "]" + " " +
+    ")";
 }
