@@ -1,5 +1,5 @@
 import { List, Record, RecordOf } from "immutable";
-import { Grammar, Item } from "./Grammar";
+import { Grammar, ShowGrammar } from "./Grammar";
 
 export type ExpressionProps<Meta, Rule> = {
   meta: Meta,
@@ -12,3 +12,13 @@ export type Expression<Meta, Rule> = RecordOf<ExpressionProps<Meta, Rule>>
 export function makeExpression<Meta, Rule>(props: ExpressionProps<Meta, Rule>): Expression<Meta, Rule> {
   return Record(props)();
 }
+
+export function showExpression<Meta, Rule>(
+  showGrammar: ShowGrammar<Meta, Rule>,
+  exp: Expression<Meta, Rule>
+): string {
+  return (
+    showGrammar(exp.meta, exp.rule)
+      (exp.exps.map(e => showExpression(showGrammar, e))));
+}
+

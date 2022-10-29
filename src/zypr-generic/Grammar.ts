@@ -1,11 +1,7 @@
 import { List, Map } from 'immutable';
 
 export type Grammar<Meta, Rule> =
-  Map<
-    Meta,
-    Map<Rule, List<Item<Meta>>>
-  >
+  (meta: Meta) => (rule: Rule) => List<Meta>
 
-export type Item<Meta> = Meta | Atom;
-
-export type Atom = 'string' | 'unit'
+export type ShowGrammar<Meta, Rule> =
+  (meta: Meta, rule: Rule) => (exps: List<string>) => string

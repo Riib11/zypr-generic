@@ -1,9 +1,9 @@
 
-// type Cursor = { zip: Zipper, exp:  }
-
+import exp from "constants";
 import { List, Record, RecordOf } from "immutable";
 import { Direction } from "./Direction";
-import { Expression, makeExpression } from "./Expression";
+import { Expression, makeExpression, showExpression } from "./Expression";
+import { ShowGrammar } from "./Grammar";
 
 export type Zipper<Meta, Rule> = List<Step<Meta, Rule>>;
 
@@ -18,7 +18,21 @@ export type Step<Meta, Rule> = RecordOf<StepProps<Meta, Rule>>
 
 export function makeStep<Meta, Rule>(props: StepProps<Meta, Rule>): Step<Meta, Rule> { return Record(props)(); }
 
-export function wrap<Meta, Rule>(step: Step<Meta, Rule>, exp: Expression<Meta, Rule>): Expression<Meta, Rule> {
+
+
+export function wrap<Meta, Rule>(zipTop: Zipper<Meta, Rule>, zipBot: Zipper<Meta, Rule>): Zipper<Meta, Rule> {
+  return zipTop.concat(zipBot);
+}
+
+export function wrapExp<Meta, Rule>(zip: Zipper<Meta, Rule>, exp: Expression<Meta, Rule>): Expression<Meta, Rule> {
+  const step = zip.get(0);
+  if (step === undefined) return exp;
+  return wrapExp(zip.shift(), wrapExpStep(step, exp));
+}
+
+
+
+export function wrapExpStep<Meta, Rule>(step: Step<Meta, Rule>, exp: Expression<Meta, Rule>): Expression<Meta, Rule> {
   return makeExpression({
     meta: step.meta,
     rule: step.rule,
@@ -92,6 +106,8 @@ export function zipDownExp<Meta, Rule>(
 ):
   [Step<Meta, Rule>, Expression<Meta, Rule>] | undefined {
 
+  console.log("zipDownExp")
+
   const expChild = exp.exps.get(i);
   if (expChild === undefined) return undefined;
   const leftsRev = exp.exps.slice(0, i);
@@ -106,4 +122,29 @@ export function zipDownExp<Meta, Rule>(
     }),
     expChild
   ];
+}
+
+export function showZipper<Meta, Rule>(
+  showGrammar: ShowGrammar<Meta, Rule>,
+  zip: Zipper<Meta, Rule>
+): (exp: string) => string {
+  return (exp: string) => {
+    let step = zip.get(0);
+    if (step === undefined) return exp;
+    return (
+      showZipper(showGrammar, zip.unshift())
+        (showStep(showGrammar, step)(exp)));
+  }
+
+}
+
+export function showStep<Meta, Rule>(
+  showGrammar: ShowGrammar<Meta, Rule>,
+  step: Step<Meta, Rule>
+): (exp: string) => string {
+  return (exp: string) =>
+    showGrammar(step.meta, step.rule)
+      (step.leftsRev.reverse().map(e => showExpression(showGrammar, e)).
+        concat([exp]).
+        concat(step.rights.map(e => showExpression(showGrammar, e))));
 }

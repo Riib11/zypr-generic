@@ -1,6 +1,7 @@
 import { Record, RecordOf } from "immutable";
-import { Expression } from "./Expression";
-import { zipLeft, zipRight, wrap, Zipper, zipDownExp, zipUp } from "./Zipper";
+import { Expression, showExpression } from "./Expression";
+import { ShowGrammar } from "./Grammar";
+import { zipLeft, zipRight, wrapExp, Zipper, zipDownExp, zipUp, showZipper, wrapExpStep } from "./Zipper";
 
 export type CursorProps<Meta, Rule> = {
   zip: Zipper<Meta, Rule>,
@@ -17,11 +18,11 @@ export function moveUpCursor<Meta, Rule>(cursor: Cursor<Meta, Rule>):
   if (res === undefined) return undefined;
   const [step, zip] = res;
   return cursor
-    .set('exp', wrap(step, cursor.exp))
+    .set('exp', wrapExpStep(step, cursor.exp))
     .set('zip', zip);
 }
 
-function moveLeftCursor<Meta, Rule>(cursor: Cursor<Meta, Rule>): Cursor<Meta, Rule> | undefined {
+export function moveLeftCursor<Meta, Rule>(cursor: Cursor<Meta, Rule>): Cursor<Meta, Rule> | undefined {
   const res = zipLeft(cursor.exp, cursor.zip);
   if (res === undefined) return undefined;
   const [exp, zip] = res;
@@ -30,7 +31,7 @@ function moveLeftCursor<Meta, Rule>(cursor: Cursor<Meta, Rule>): Cursor<Meta, Ru
     .set('zip', zip);
 }
 
-function moveRightCursor<Meta, Rule>(cursor: Cursor<Meta, Rule>): Cursor<Meta, Rule> | undefined {
+export function moveRightCursor<Meta, Rule>(cursor: Cursor<Meta, Rule>): Cursor<Meta, Rule> | undefined {
   const res = zipRight(cursor.exp, cursor.zip);
   if (res === undefined) return undefined;
   const [exp, zip] = res;
@@ -39,11 +40,18 @@ function moveRightCursor<Meta, Rule>(cursor: Cursor<Meta, Rule>): Cursor<Meta, R
     .set('zip', zip);
 }
 
-function moveDownCursor<Meta, Rule>(i: number, cursor: Cursor<Meta, Rule>): Cursor<Meta, Rule> | undefined {
+export function moveDownCursor<Meta, Rule>(i: number, cursor: Cursor<Meta, Rule>): Cursor<Meta, Rule> | undefined {
+  console.log("moveDownCursor")
   const res = zipDownExp(i, cursor.exp);
   if (res === undefined) return undefined;
   const [step, exp] = res;
   return cursor
     .set('exp', exp)
     .set('zip', cursor.zip.unshift(step));
+}
+
+export function showCursor<Meta, Rule>(showGrammar: ShowGrammar<Meta, Rule>, cursor: Cursor<Meta, Rule>): string {
+  return (
+    showZipper(showGrammar, cursor.zip)
+      ("[" + showExpression(showGrammar, cursor.exp)) + "]");
 }

@@ -1,6 +1,7 @@
 import { Record, RecordOf } from "immutable";
-import { Expression } from "./Expression";
-import { wrap, zipDown, zipDownExp, zipLeft, Zipper, zipRight, zipUp } from "./Zipper";
+import { Expression, showExpression } from "./Expression";
+import { ShowGrammar } from "./Grammar";
+import { showZipper, wrapExp, wrapExpStep, zipDown, zipDownExp, zipLeft, Zipper, zipRight, zipUp } from "./Zipper";
 
 export type SelectProps<Meta, Rule> = {
   zipTop: Zipper<Meta, Rule>,
@@ -8,12 +9,27 @@ export type SelectProps<Meta, Rule> = {
   exp: Expression<Meta, Rule>,
   // orient = 'top' implies zipBot is reversed
   // orient = 'bot' implies zipBot is not reversed
-  orient: 'top' | 'bot',
+  orient: SelectOrientation
 }
+
+export type SelectOrientation = 'top' | 'bot';
 
 export type Select<Meta, Rule> = RecordOf<SelectProps<Meta, Rule>>;
 
 export function makeSelect<Meta, Rule>(props: SelectProps<Meta, Rule>): Select<Meta, Rule> { return Record(props)(); }
+
+// orient = 'top' implies zipBot is reversed
+// orient = 'bot' implies zipBot is not reversed
+export function fixZipBot<Meta, Rule>(
+  orient: SelectOrientation,
+  zipBot: Zipper<Meta, Rule>
+):
+  Zipper<Meta, Rule> {
+  switch (orient) {
+    case 'top': return zipBot.reverse();
+    case 'bot': return zipBot;
+  }
+}
 
 export function moveUpSelect<Meta, Rule>(select: Select<Meta, Rule>): Select<Meta, Rule> | undefined {
   switch (select.orient) {
@@ -31,7 +47,7 @@ export function moveUpSelect<Meta, Rule>(select: Select<Meta, Rule>): Select<Met
       const [step, zipBot] = res;
       return select
         .set('zipBot', zipBot)
-        .set('exp', wrap(step, select.exp));
+        .set('exp', wrapExpStep(step, select.exp));
     }
   }
 }
@@ -87,4 +103,11 @@ function moveDownSelect<Meta, Rule>(i: number, select: Select<Meta, Rule>): Sele
         .set('exp', exp);
     }
   }
+}
+
+export function showSelect<Meta, Rule>(showGrammar: ShowGrammar<Meta, Rule>, select: Select<Meta, Rule>): string {
+  return (
+    showZipper(showGrammar, select.zipTop)
+      (showZipper(showGrammar, fixZipBot(select.orient, select.zipBot))
+        (showExpression(showGrammar, select.exp))));
 }
