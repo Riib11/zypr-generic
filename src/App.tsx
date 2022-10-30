@@ -1,112 +1,40 @@
 import { List } from 'immutable';
 import React from 'react';
 import './App.css';
-import { makeCursor } from './zypr-generic/Cursor';
-import { Editor, escapeSelect, makeEditor, moveEditorCursorDown, moveEditorCursorLeft, moveEditorCursorRight, moveEditorCursorUp, moveEditorSelectDown, moveEditorSelectLeft, moveEditorSelectRight, moveEditorSelectUp, printEditor } from './zypr-generic/Editor';
-import { Expression, makeExpression } from './zypr-generic/Grammar';
+import { Direction, directionFromKey } from './zypr-generic/Direction';
+import { Editor, escapeSelect, displayEditor, interactEditorQuery, escapeQuery, moveEditorSelect, moveEditorCursor, backspaceEditor } from './zypr-generic/Editor';
+import { displayExpression } from './zypr-generic/Grammar';
+import { editorInit, Meta1, Rule1 } from './zypr-generic/languages/Lang1';
+import { fixZipBot } from './zypr-generic/Selection';
+import { displayZipper } from './zypr-generic/Zipper';
 
-type Meta1 = 'exp';
-type Rule1
-  = { case: 'app' }
-  | { case: 'var', label: string };
-
-const mkApp = (apl: Expression<Meta1, Rule1>, arg: Expression<Meta1, Rule1>): Expression<Meta1, Rule1> =>
-  makeExpression({ meta: 'exp', rule: { case: 'app' }, exps: List([apl, arg]) });
-const mkVar = (label: string): Expression<Meta1, Rule1> =>
-  makeExpression({ meta: 'exp', rule: { case: 'var', label }, exps: List() });
+type Meta = Meta1;
+type Rule = Rule1;
 
 type AppProps = {}
 
 type AppState = {
-  editor: Editor<Meta1, Rule1>,
-  history: List<Editor<Meta1, Rule1>>,
-  future: List<Editor<Meta1, Rule1>>
+  editor: Editor<Meta, Rule>,
+  history: List<Editor<Meta, Rule>>,
+  future: List<Editor<Meta, Rule>>
 }
 
 export default class App extends React.Component<AppProps, AppState> {
   state = {
-    editor: makeEditor<Meta1, Rule1>({
-      grammar: ((meta) => (rule) => {
-        switch (meta) {
-          case 'exp': {
-            switch (rule.case) {
-              case 'var': return List();
-              case 'app': return List(['exp', 'exp']);
-            }
-          }
-        }
-      }),
-      editorPrinter: {
-        grammarDisplayer: (meta, rule) => (children) => {
-          switch (meta) {
-            case 'exp': {
-              switch (rule.case) {
-                case 'var': return {
-                  exp: makeExpression({ meta, rule, exps: children.map(child => child.exp) }),
-                  out: rule.label
-                };
-                case 'app': return {
-                  exp: makeExpression({ meta, rule, exps: children.map(child => child.exp) }),
-                  out: `(${children.get(0)?.out} ${children.get(1)?.out})`
-                };
-              }
-            }
-          }
-        },
-        wrapCursorExp: out => "{" + out + "}",
-        wrapSelectTop: out => "{" + out + "}",
-        wrapSelectBot: out => "{" + out + "}"
-      },
-      editorRenderer: {
-        grammarDisplayer: (meta, rule) => (children) => {
-          switch (meta) {
-            case 'exp': {
-              switch (rule.case) {
-                case 'var': return {
-                  exp: makeExpression({ meta, rule, exps: children.map(child => child.exp) }),
-                  out: (
-                    <div className="exp exp-var">
-                      {rule.label}
-                    </div>
-                  )
-                };
-                case 'app': return {
-                  exp: makeExpression({ meta, rule, exps: children.map(child => child.exp) }),
-                  out: (
-                    <div className="exp exp-app">
-                      ({children.get(0)?.out} {children.get(1)?.out})
-                    </div>
-                  )
-                };
-              }
-            }
-          }
-        },
-        wrapCursorExp: out => (<div className="cursor">{out}</div>),
-        wrapSelectTop: out => (<div className="select select-top">{out}</div>),
-        wrapSelectBot: out => (<div className="select select-bot">{out}</div>)
-      },
-      mode: {
-        case: 'cursor',
-        cursor: makeCursor({
-          zip: List(),
-          // exp: mkApp(mkApp(mkApp(mkVar("a"), mkVar("b")), mkVar("c")), mkVar("d"))
-          // exp: mkApp(mkVar("a"), mkVar("b"))
-          exp: mkApp(mkApp(mkVar("a"), mkVar("b")), mkApp(mkVar("c"), mkVar("d")))
-        })
-      }
-    }),
-    history: List<Editor<Meta1, Rule1>>(),
-    future: List<Editor<Meta1, Rule1>>()
+    editor: editorInit,
+    history: List<Editor<Meta, Rule>>(),
+    future: List<Editor<Meta, Rule>>()
   }
 
-  updateEditor(f: (editor: Editor<Meta1, Rule1>) => Editor<Meta1, Rule1> | undefined): void {
-    const editor: Editor<Meta1, Rule1> | undefined = f(this.state.editor)
+  updateEditor(f: (editor: Editor<Meta, Rule>) => Editor<Meta, Rule> | undefined, notarize: boolean = true): void {
+    const editor: Editor<Meta, Rule> | undefined = f(this.state.editor)
     if (editor === undefined) return;
     this.setState({
       ...this.state,
       editor: editor,
-      history: this.state.history.unshift(this.state.editor),
+      history: notarize ?
+        this.state.history.unshift(this.state.editor).take(100) :
+        this.state.history,
       future: List()
     });
   }
@@ -135,36 +63,67 @@ export default class App extends React.Component<AppProps, AppState> {
 
   keyboardEventListener = (event: KeyboardEvent): any => {
     console.log(event.key);
-    if (event.key === 'ArrowUp') {
-      if (event.shiftKey) {
-        this.updateEditor(moveEditorSelectUp);
+    if (event.key === 'Shift') { }
+    else if (directionFromKey(event.key)) {
+      let dir = directionFromKey(event.key) as Direction;
+      if (
+        (dir === 'left' || dir === 'right') &&
+        this.state.editor.mode.case === 'cursor' &&
+        this.state.editor.mode.query !== undefined
+      ) {
+        this.updateEditor(interactEditorQuery(event));
+      } else if (event.shiftKey) {
+        this.updateEditor(moveEditorSelect(dir));
       } else {
-        this.updateEditor(moveEditorCursorUp);
+        this.updateEditor(moveEditorCursor(dir));
       }
-    } else if (event.key === 'ArrowDown') {
-      if (event.shiftKey) {
-        this.updateEditor(moveEditorSelectDown);
-      } else {
-        this.updateEditor(moveEditorCursorDown);
-      }
-    } else if (event.key === 'ArrowLeft') {
-      if (event.shiftKey) {
-        this.updateEditor(moveEditorSelectLeft);
-      } else {
-        this.updateEditor(moveEditorCursorLeft);
-      }
-    } else if (event.key === 'ArrowRight') {
-      if (event.shiftKey) {
-        this.updateEditor(moveEditorSelectRight);
-      } else {
-        this.updateEditor(moveEditorCursorRight);
-      }
+      event.preventDefault();
     } else if (event.key === 'Escape') {
-      this.updateEditor(escapeSelect);
-    } else if (event.key === 'z' && event.ctrlKey) {
-      this.undoEditor();
-    } else if (event.key === 'Z' && event.ctrlKey) {
-      this.redoEditor();
+      switch (this.state.editor.mode.case) {
+        case 'cursor': {
+          if (this.state.editor.mode.query !== undefined) {
+            this.updateEditor(escapeQuery);
+            event.preventDefault();
+          }
+          break;
+        }
+        case 'select': {
+          this.updateEditor(escapeSelect);
+          event.preventDefault();
+          break;
+        }
+      }
+    } else if (event.key === 'Enter') {
+      this.updateEditor(interactEditorQuery(event));
+      event.preventDefault();
+    } else if (event.key === 'Tab') {
+      // TODO
+      event.preventDefault();
+    } else if (event.key === 'Backspace') {
+      if (
+        this.state.editor.mode.case === 'cursor' &&
+        this.state.editor.mode.query !== undefined
+      ) {
+        this.updateEditor(interactEditorQuery(event))
+      } else {
+        this.updateEditor(backspaceEditor as (editor: Editor<Meta, Rule>) => Editor<Meta, Rule> | undefined);
+      }
+      event.preventDefault()
+    } else if (event.ctrlKey) {
+      if (event.key === 'z') {
+        this.undoEditor();
+        event.preventDefault();
+      } else if (event.key === 'Z') {
+        this.redoEditor();
+        event.preventDefault();
+      }
+      // TODO: cut/copy/paste
+    } else if (event.altKey) {
+      // TODO
+      event.preventDefault();
+    } else {
+      this.updateEditor(interactEditorQuery(event));
+      event.preventDefault();
     }
   }
 
@@ -180,9 +139,84 @@ export default class App extends React.Component<AppProps, AppState> {
     return (
       <div className='app'>
         <div className='editor'>
-          {printEditor(this.state.editor)}
+          <div className='editor-inner'>
+            {displayEditor(this.state.editor, this.state.editor.renderer)}
+          </div>
         </div>
+        {this.renderConsole()}
       </div>
     );
+  }
+
+  renderConsole(): JSX.Element {
+    let editorHtml = (
+      <span className="code">
+        {displayEditor(this.state.editor, this.state.editor.printer)}
+      </span>
+    );
+    let modeHtml: JSX.Element;
+    const grammarDisplayer = this.state.editor.printer.grammarDisplayer;
+    switch (this.state.editor.mode.case) {
+      case 'cursor': {
+        const cursor = this.state.editor.mode.cursor;
+        const query = this.state.editor.mode.query;
+        modeHtml = (
+          <table>
+            <tbody>
+              <tr>
+                <td><span className="table-key">zipper</span></td>
+                <td><span className="code">{displayZipper(grammarDisplayer, cursor.zip)({ exp: cursor.exp, out: "@" }).out}</span></td>
+              </tr>
+              <tr>
+                <td><span className="table-key">expression</span></td>
+                <td><span className="code">{displayExpression(grammarDisplayer, cursor.exp).out}</span></td>
+              </tr>
+              <tr>
+                <td><span className="table-key">query</span></td>
+                <td><span className="code">{query !== undefined ? query.str : "no query"}</span></td>
+              </tr>
+            </tbody>
+          </table>
+        );
+        break;
+      }
+      case 'select': {
+        const select = this.state.editor.mode.select;
+        modeHtml = (
+          <table>
+            <tbody>
+              <tr>
+                <td><span className="table-key">top zipper</span></td>
+                <td><span className="code">{displayZipper(grammarDisplayer, select.zipTop)({ exp: select.exp, out: "@" }).out}</span></td>
+              </tr>
+              <tr>
+                <td><span className="table-key">bot zipper</span></td>
+                <td><span className="code">{displayZipper(grammarDisplayer, fixZipBot(select.orient, select.zipBot))({ exp: select.exp, out: "@" }).out}</span></td>
+              </tr>
+              <tr>
+                <td><span className="table-key">expression</span></td>
+                <td><span className="code">{displayExpression(grammarDisplayer, select.exp).out}</span></td>
+              </tr>
+            </tbody>
+          </table>
+        )
+      }
+    }
+    return (
+      <div className="console">
+        <table>
+          <tbody>
+            <tr>
+              <td><span className="table-key">editor</span></td>
+              <td>{editorHtml}</td>
+            </tr>
+            <tr>
+              <td><span className="table-key">mode</span></td>
+              <td>{modeHtml}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    )
   }
 }

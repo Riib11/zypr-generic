@@ -1,8 +1,9 @@
 import { List, Record, RecordOf } from "immutable";
 import { Cursor, displayCursor, makeCursor, moveDownCursor, moveLeftCursor, moveRightCursor, moveUpCursor } from "./Cursor";
-import { Grammar, GrammarDisplayer } from "./Grammar";
+import { Direction } from "./Direction";
+import { Expression, Grammar, GrammarDisplayer, makeExpression } from "./Grammar";
 import { fixZipBot, moveDownSelect, moveLeftSelect, moveRightSelect, moveUpSelect, Select, SelectOrientation, makeSelect, displaySelect } from "./Selection";
-import { wrapExp } from "./Zipper";
+import { wrap, wrapExp, Zipper } from "./Zipper";
 
 export type Mode<Meta, Rule>
   = CursorMode<Meta, Rule>
@@ -10,7 +11,8 @@ export type Mode<Meta, Rule>
 
 export type CursorMode<Meta, Rule> = {
   case: 'cursor',
-  cursor: Cursor<Meta, Rule>
+  cursor: Cursor<Meta, Rule>,
+  query: EditorQuery<Meta, Rule> | undefined
 }
 
 export type SelectMode<Meta, Rule> = {
@@ -20,15 +22,30 @@ export type SelectMode<Meta, Rule> = {
 
 export type EditorDisplayer<Meta, Rule, A> = {
   grammarDisplayer: GrammarDisplayer<Meta, Rule, A>,
-  wrapCursorExp: (out: A) => A,
-  wrapSelectTop: (out: A) => A,
-  wrapSelectBot: (out: A) => A
+  wrapCursorExp: (cursor: Cursor<Meta, Rule>, res: EditorQueryResult<Meta, Rule>) => (out: A) => A,
+  wrapSelectTop: (select: Select<Meta, Rule>) => (out: A) => A,
+  wrapSelectBot: (select: Select<Meta, Rule>) => (out: A) => A
 }
+
+export type EditorQuery<Meta, Rule> = {
+  str: string,
+  i: number,
+}
+
+export type EditorQueryResult<Meta, Rule>
+  = { case: 'replace', exp: Expression<Meta, Rule> }
+  | { case: 'insert', zip: Zipper<Meta, Rule> }
+  | { case: 'invalid', str: string }
+  | { case: 'no query' }
+
+export type EditorQueryHandler<Meta, Rule> =
+  (query: EditorQuery<Meta, Rule> | undefined) => EditorQueryResult<Meta, Rule>
 
 export type EditorProps<Meta, Rule> = {
   grammar: Grammar<Meta, Rule>,
-  editorPrinter: EditorDisplayer<Meta, Rule, string>,
-  editorRenderer: EditorDisplayer<Meta, Rule, JSX.Element>,
+  printer: EditorDisplayer<Meta, Rule, string>,
+  renderer: EditorDisplayer<Meta, Rule, JSX.Element>,
+  queryHandler: EditorQueryHandler<Meta, Rule>,
   mode: Mode<Meta, Rule>
 }
 
@@ -36,52 +53,47 @@ export type Editor<Meta, Rule> = RecordOf<EditorProps<Meta, Rule>>;
 
 export function makeEditor<Meta, Rule>(props: EditorProps<Meta, Rule>): Editor<Meta, Rule> { return Record(props)(); }
 
-export function printEditor<Meta, Rule, A>(editor: Editor<Meta, Rule>): string {
+export function displayEditor<Meta, Rule, A>(editor: Editor<Meta, Rule>, editorDisplayer: EditorDisplayer<Meta, Rule, A>): A {
   switch (editor.mode.case) {
     case 'cursor': {
       return displayCursor(
-        editor.editorPrinter.grammarDisplayer,
-        editor.editorPrinter.wrapCursorExp,
+        editorDisplayer.grammarDisplayer,
+        editorDisplayer.wrapCursorExp(editor.mode.cursor, editor.queryHandler(editor.mode.query)),
         editor.mode.cursor
       ).out;
     }
     case 'select': {
       return displaySelect(
-        editor.editorPrinter.grammarDisplayer,
-        editor.editorPrinter.wrapSelectTop,
-        editor.editorPrinter.wrapSelectBot,
+        editorDisplayer.grammarDisplayer,
+        editorDisplayer.wrapSelectTop(editor.mode.select),
+        editorDisplayer.wrapSelectBot(editor.mode.select),
         editor.mode.select
       ).out;
     }
   }
 }
 
-// export function showEditor<Meta, Rule>(editor: Editor<Meta, Rule>): string {
-//   switch (editor.mode.case) {
-//     case 'cursor': {
-//       return showCursor(editor.mode.cursor);
-//     }
-//     case 'select': {
-//       // return displaySelect(editor.mode.select);
-//       throw new Error("TODO: showEditor");
-
-//     }
-//   }
-// }
+export function escapeQuery<Meta, Rule>(editor: Editor<Meta, Rule>): Editor<Meta, Rule> {
+  switch (editor.mode.case) {
+    case 'cursor': return editor.set('mode', { ...editor.mode, query: undefined });
+    case 'select': return editor;
+  }
+}
 
 export function escapeSelect<Meta, Rule>(editor: Editor<Meta, Rule>): Editor<Meta, Rule> {
   switch (editor.mode.case) {
     case 'cursor': return editor;
     case 'select': {
+      const select = editor.mode.select;
       switch (editor.mode.select.orient) {
         case 'top': {
           return editor.set('mode', {
             case: 'cursor',
             cursor: makeCursor({
-              zip: editor.mode.select.zipTop.concat(
-                fixZipBot(editor.mode.select.orient, editor.mode.select.zipBot)),
-              exp: editor.mode.select.exp
-            })
+              zip: wrap(select.zipTop, fixZipBot(select.orient, select.zipBot)),
+              exp: editor.mode.select.exp,
+            }),
+            query: undefined
           });
         }
         case 'bot': {
@@ -89,11 +101,9 @@ export function escapeSelect<Meta, Rule>(editor: Editor<Meta, Rule>): Editor<Met
             case: 'cursor',
             cursor: makeCursor({
               zip: editor.mode.select.zipTop,
-              exp:
-                wrapExp(
-                  fixZipBot(editor.mode.select.orient, editor.mode.select.zipBot),
-                  editor.mode.select.exp)
-            })
+              exp: wrapExp(fixZipBot(editor.mode.select.orient, editor.mode.select.zipBot), editor.mode.select.exp)
+            }),
+            query: undefined
           });
         }
       }
@@ -122,7 +132,7 @@ export function moveEditorCursorUp<Meta, Rule>(editor: Editor<Meta, Rule>): Edit
     case 'cursor': {
       const cursor = moveUpCursor(editor.mode.cursor);
       if (cursor === undefined) return undefined;
-      return editor.set('mode', { case: 'cursor', cursor });
+      return editor.set('mode', { case: 'cursor', cursor, query: undefined });
     }
     case 'select': {
       return moveEditorCursorUp(escapeSelect(editor));
@@ -135,7 +145,7 @@ export function moveEditorCursorDown<Meta, Rule>(editor: Editor<Meta, Rule>): Ed
     case 'cursor': {
       const cursor = moveDownCursor(0, editor.mode.cursor);
       if (cursor === undefined) return undefined;
-      return editor.set('mode', { case: 'cursor', cursor });
+      return editor.set('mode', { case: 'cursor', cursor, query: undefined });
     }
     case 'select': {
       return moveEditorCursorDown(escapeSelect(editor));
@@ -148,7 +158,7 @@ export function moveEditorCursorLeft<Meta, Rule>(editor: Editor<Meta, Rule>): Ed
     case 'cursor': {
       const cursor = moveLeftCursor(editor.mode.cursor);
       if (cursor === undefined) return undefined;
-      return editor.set('mode', { case: 'cursor', cursor });
+      return editor.set('mode', { case: 'cursor', cursor, query: undefined });
     }
     case 'select': {
       return moveEditorCursorLeft(escapeSelect(editor));
@@ -161,7 +171,7 @@ export function moveEditorCursorRight<Meta, Rule>(editor: Editor<Meta, Rule>): E
     case 'cursor': {
       const cursor = moveRightCursor(editor.mode.cursor);
       if (cursor === undefined) return undefined;
-      return editor.set('mode', { case: 'cursor', cursor });
+      return editor.set('mode', { case: 'cursor', cursor, query: undefined });
     }
     case 'select': {
       return moveEditorCursorRight(escapeSelect(editor));
@@ -178,6 +188,28 @@ export function fixSelect<Meta, Rule>(editor: Editor<Meta, Rule>): Editor<Meta, 
       } else {
         return editor;
       }
+    }
+  }
+}
+
+export function moveEditorCursor<Meta, Rule>(dir: Direction): (editor: Editor<Meta, Rule>) => Editor<Meta, Rule> | undefined {
+  return editor => {
+    switch (dir) {
+      case 'up': return moveEditorCursorUp(editor);
+      case 'down': return moveEditorCursorDown(editor);
+      case 'left': return moveEditorCursorLeft(editor);
+      case 'right': return moveEditorCursorRight(editor);
+    }
+  }
+}
+
+export function moveEditorSelect<Meta, Rule>(dir: Direction): (editor: Editor<Meta, Rule>) => Editor<Meta, Rule> | undefined {
+  return editor => {
+    switch (dir) {
+      case 'up': return moveEditorSelectUp(editor);
+      case 'down': return moveEditorSelectDown(editor);
+      case 'left': return moveEditorSelectLeft(editor);
+      case 'right': return moveEditorSelectRight(editor);
     }
   }
 }
@@ -238,4 +270,105 @@ export function moveEditorSelectRight<Meta, Rule>(editor: Editor<Meta, Rule>): E
   }
 }
 
+export function fixQuery<Meta, Rule>(editor: Editor<Meta, Rule>): Editor<Meta, Rule> | undefined {
+  if (
+    editor.mode.case === 'cursor' &&
+    editor.mode.query !== undefined &&
+    editor.mode.query.str === ""
+  ) {
+    editor = escapeQuery(editor);
+  }
+  return editor;
+}
 
+export function interactEditorQuery<Meta, Rule>(event: KeyboardEvent): (editor: Editor<Meta, Rule>) => Editor<Meta, Rule> | undefined {
+  return (editor) => {
+    let editor1: Editor<Meta, Rule> | undefined;
+    switch (editor.mode.case) {
+      case 'cursor': {
+        const cursor = editor.mode.cursor;
+        const query =
+          editor.mode.query !== undefined ?
+            editor.mode.query :
+            { str: "", i: 0 }
+        if (event.key === 'ArrowLeft') {
+          editor1 = editor.set('mode', { ...editor.mode, query: { ...query, i: query.i - 1 } });
+          editor1 = editor.updateIn(['mode', 'query', 'i'], i => i as number - 1);
+        } else if (event.key === 'ArrowRight') {
+          editor1 = editor.set('mode', { ...editor.mode, query: { ...query, i: query.i + 1 } });
+        } else if (event.key === 'Backspace') {
+          editor1 = editor.set('mode', { ...editor.mode, query: { ...query, str: query.str.slice(0, -1) } });
+        } else if (event.key === 'Delete') {
+          // TODO
+        } else if (event.key === 'Enter') {
+          const res = editor.queryHandler(query);
+          switch (res.case) {
+            case 'replace': {
+              editor1 = editor.set('mode', {
+                ...editor.mode,
+                query: undefined,
+                cursor: makeCursor({
+                  zip: cursor.zip,
+                  exp: res.exp
+                })
+              });
+              break;
+            }
+            case 'insert': {
+              console.log("here");
+              console.log("res", res);
+              editor1 = editor.set('mode', {
+                ...editor.mode,
+                query: undefined,
+                cursor: makeCursor({
+                  exp: cursor.exp,
+                  zip: wrap(cursor.zip, res.zip)
+                })
+              });
+              break;
+            }
+            case 'invalid': break;
+            case 'no query': break;
+          }
+        } else {
+          editor1 = editor.set('mode', { ...editor.mode, query: { ...query, str: query.str + event.key } });
+        }
+        break;
+      }
+      case 'select': break;
+    }
+    if (editor1 === undefined) return undefined;
+    return fixQuery(editor1);
+  }
+}
+
+export function backspaceEditor<Meta, Rule extends { case: 'hole' }>(editor: Editor<Meta, Rule>): Editor<Meta, Rule> | undefined {
+  switch (editor.mode.case) {
+    case 'cursor': {
+      let cursor = editor.mode.cursor;
+      return editor.set('mode', {
+        case: 'cursor',
+        cursor: makeCursor<Meta, Rule>({
+          zip: cursor.zip,
+          exp: makeExpression<Meta, Rule>({
+            meta: cursor.exp.meta,
+            rule: { case: 'hole' } as Rule,
+            exps: List()
+          })
+        }),
+        query: undefined
+      })
+    }
+    case 'select': {
+      let select = editor.mode.select;
+      return editor.set('mode', {
+        case: 'cursor',
+        cursor: makeCursor<Meta, Rule>({
+          zip: select.zipTop,
+          exp: select.exp
+        }),
+        query: undefined
+      });
+    }
+  }
+}
