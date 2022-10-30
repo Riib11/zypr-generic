@@ -1,7 +1,7 @@
 import { List, Record, RecordOf } from 'immutable';
 
 export type Grammar<Meta, Rule> =
-  (meta: Meta) => (rule: Rule) => List<Meta>
+  (meta: Meta) => (rule: Rule) => List<Meta> | undefined
 
 // expression
 

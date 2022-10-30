@@ -1,3 +1,6 @@
+export const x = 1;
+
+/*
 import { List } from 'immutable';
 import { makeCursor } from '../Cursor';
 import { Editor, makeEditor, EditorDisplayer } from '../Editor';
@@ -180,3 +183,4 @@ export const editorInit: Editor<Meta, Rule> = makeEditor<Meta, Rule>({
     query: undefined
   }
 });
+*/
