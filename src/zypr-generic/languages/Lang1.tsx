@@ -1,7 +1,7 @@
 import { List } from 'immutable';
 import { makeCursor } from '../Cursor';
 import { Editor, makeEditor, EditorDisplayer, EditorQueryHandler } from '../Editor';
-import { Expression, Grammar, makeExpression, makeExpressionHole, setExpressionData } from '../Grammar';
+import { Expression, Grammar, GrammarDisplayerChild, makeExpression, makeExpressionHole } from '../Grammar';
 import { displayZipper, makeStep } from '../Zipper';
 
 export type Meta = 'exp'
@@ -11,11 +11,12 @@ export type Meta = 'exp'
 //   | { case: 'var', label: string }
 //   | { case: 'hole' }
 
-export type Rule = 'var' | 'app' | 'hole'
+export type Rule
+  = { case: 'var', label: string }
+  | { case: 'app' }
+  | { case: 'hole' }
 
-export type Data = { label: string } | undefined;
-
-export type Exp = Expression<Meta, Rule, Data>;
+export type Exp = Expression<Meta, Rule>;
 
 // ((meta) => (rule) => {
 //   switch (meta) {
@@ -42,88 +43,71 @@ export type Exp = Expression<Meta, Rule, Data>;
 
 function metaRules<A>(meta: Meta): (k: <R extends Rule>(x: R) => A) => { rule: Rule, out: A }[] {
   switch (meta) {
-    case 'exp': return (k) => [{ rule: 'var', out: k('var') }, { rule: 'app', out: k('app') }];
-  }
-}
-
-function ruleDataDefault<A>(rule: Rule): (k: <D extends Data>(d: D) => A) => A {
-  return (k) => {
-    switch (rule) {
-      case 'var': return k(undefined);
-      case 'app': return k({ label: "" });
-      case 'hole': return k(undefined);
-    }
+    case 'exp': return (k) => [
+      { rule: { case: 'var', label: "" }, out: k({ case: 'var', label: "" }) },
+      { rule: { case: 'app' }, out: k({ case: 'app' }) }];
   }
 }
 
 function ruleChildren(rule: Rule): Meta[] {
-  switch (rule) {
+  switch (rule.case) {
     case 'var': return [];
     case 'app': return ['exp', 'exp'];
     case 'hole': return [];
   }
 }
 
-const holeRules: (meta: Meta) => Rule =
-  meta => {
-    switch (meta) {
-      case 'exp': return 'hole';
-    }
+function holeRules(meta: Meta): Rule {
+  switch (meta) {
+    case 'exp': return { case: 'hole' };
   }
-
-const holeData: (meta: Meta) => Data =
-  meta => {
-    switch (meta) {
-      case 'exp': return undefined;
-    }
-  }
-
-const grammar: Grammar<Meta, Rule, Data> = {
-  metaRules,
-  ruleDataDefault,
-  ruleChildren,
-  holeRules,
-  holeData
 }
 
+const grammar: Grammar<Meta, Rule> = {
+  metaRules,
+  ruleChildren,
+  holeRules,
+};
+
 export const mkVar = (label: string): Exp =>
-  setExpressionData(grammar)
-    (makeExpression(grammar)('exp')[0].out(List([])).set('data', { label }))
-    (1);
+  makeExpression(grammar)('exp')[0].out(List([]))
+    .set('rule', ({ case: 'var', label }))
 
 export const mkApp = (apl: Exp, arg: Exp): Exp =>
   makeExpression(grammar)('exp')[1].out(List([apl, arg]));
 
 export const mkHole = (): Exp =>
-  makeExpressionHole('exp');
+  makeExpression(grammar)('exp')[2].out(List([]));
 
-// const printer: EditorDisplayer<Meta, Rule, string> = {
-//   grammarDisplayer: (meta, rule) => (children) => {
-//     switch (meta) {
-//       case 'exp': {
-//         switch (rule.case) {
-//           case 'var': return {
-//             exp: makeExpression({ meta, rule, exps: children.map(child => child.exp) }),
-//             out: rule.label
-//           };
-//           case 'app': return {
-//             exp: makeExpression({ meta, rule, exps: children.map(child => child.exp) }),
-//             out: `(${children.get(0)?.out} ${children.get(1)?.out})`
-//           };
-//           case 'hole': return {
-//             exp: makeExpression({ meta, rule, exps: children.map(child => child.exp) }),
-//             out: "?"
-//           }
-//         }
-//       }
-//     }
-//   },
-//   wrapCursorExp: (cursor, res) => out => {
-//     return "{" + out + "}";
-//   },
-//   wrapSelectTop: select => out => "{" + out + "}",
-//   wrapSelectBot: select => out => "{" + out + "}"
-// }
+const printer: EditorDisplayer<Meta, Rule, string> = {
+  // grammarDisplayer: (meta, rule) => (children) => {
+  //   switch (meta) {
+  //     case 'exp': {
+  //       switch (rule.case) {
+  //         case 'var': return {
+  //           exp: makeExpression({ meta, rule, exps: children.map(child => child.exp) }),
+  //           out: rule.label
+  //         };
+  //         case 'app': return {
+  //           exp: makeExpression({ meta, rule, exps: children.map(child => child.exp) }),
+  //           out: `(${children.get(0)?.out} ${children.get(1)?.out})`
+  //         };
+  //         case 'hole': return {
+  //           exp: makeExpression({ meta, rule, exps: children.map(child => child.exp) }),
+  //           out: "?"
+  //         }
+  //       }
+  //     }
+  //   }
+  // },
+  grammarDisplayer: (meta) => grammar.metaRules<(children: List<GrammarDisplayerChild<Meta, Rule, A>>) =>
+    GrammarDisplayerChild<Meta, Rule, string>>(meta)(rule => children => {
+      exp: makeExpression(grammar)(meta)[]
+    })
+  wrapCursorExp: (cursor, res) => out => "{" + out + "}"
+  wrapSelectTop: select => out => "{" + out + "}",
+  wrapSelectBot: select => out => "{" + out + "}"
+}
 
 // const renderer: EditorDisplayer<Meta, Rule, JSX.Element> = {
 //   grammarDisplayer: (meta, rule) => (children) => {
