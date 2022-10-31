@@ -4,12 +4,12 @@ import './App.css';
 import { Direction, directionFromKey } from './zypr-generic/Direction';
 import { Editor, escapeSelect, displayEditor, interactEditorQuery, escapeQuery, moveEditorSelect, moveEditorCursor, backspaceEditor } from './zypr-generic/Editor';
 import { displayExpression } from './zypr-generic/Grammar';
-import { editorInit, Meta1, Rule1 } from './zypr-generic/languages/Lang1';
+import { editorInit, Meta, Rule } from './zypr-generic/languages/Lang1';
 import { fixZipBot } from './zypr-generic/Selection';
 import { displayZipper } from './zypr-generic/Zipper';
 
-type Meta = Meta1;
-type Rule = Rule1;
+type Meta = Meta;
+type Rule = Rule;
 
 type AppProps = {}
 
