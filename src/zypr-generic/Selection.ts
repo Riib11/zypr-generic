@@ -1,111 +1,119 @@
-import { Record, RecordOf } from "immutable";
-import { Expression, GrammarDisplayer, GrammarDisplayerChild, displayExpression } from "./Grammar";
-import { displayZipper, wrapExpStep, zipDown, zipDownExp, zipLeft, Zipper, zipRight, zipUp } from "./Zipper";
+import { Record, RecordOf } from "immutable"
+import { Expression, GrammarDisplayer, GrammarDisplayerKid, displayExpression, Grammar } from "./Grammar"
+import { displayZipper, wrapExpStep, zipDown, zipDownExp, zipLeft, Zipper, zipRight, zipUp } from "./Zipper"
 
-export type SelectProps<Meta, Rule> = {
-  zipTop: Zipper<Meta, Rule>,
-  zipBot: Zipper<Meta, Rule>
-  exp: Expression<Meta, Rule>,
+export type SelectProps<M extends string, R extends string, D> = {
+  zipTop: Zipper<M, R, D>,
+  zipBot: Zipper<M, R, D>
+  exp: Expression<M, R, D>,
   // orient = 'top' implies zipBot is reversed
   // orient = 'bot' implies zipBot is not reversed
   orient: SelectOrientation
 }
 
-export type SelectOrientation = 'top' | 'bot';
+export type SelectOrientation = 'top' | 'bot'
 
-export type Select<Meta, Rule> = RecordOf<SelectProps<Meta, Rule>>;
+export type Select<M extends string, R extends string, D> = RecordOf<SelectProps<M, R, D>>
 
-export function makeSelect<Meta, Rule>(props: SelectProps<Meta, Rule>): Select<Meta, Rule> { return Record(props)(); }
+export function makeSelect<M extends string, R extends string, D>(props: SelectProps<M, R, D>): Select<M, R, D> { return Record(props)() }
 
 // orient = 'top' implies zipBot is reversed
 // orient = 'bot' implies zipBot is not reversed
-export function fixZipBot<Meta, Rule>(
+export function fixZipBot<M extends string, R extends string, D>(
   orient: SelectOrientation,
-  zipBot: Zipper<Meta, Rule>
+  zipBot: Zipper<M, R, D>
 ):
-  Zipper<Meta, Rule> {
+  Zipper<M, R, D> {
   switch (orient) {
-    case 'top': return zipBot.reverse();
-    case 'bot': return zipBot;
+    case 'top': return zipBot.reverse()
+    case 'bot': return zipBot
   }
 }
 
-export function moveUpSelect<Meta, Rule>(select: Select<Meta, Rule>): Select<Meta, Rule> | undefined {
+export function moveUpSelect<M extends string, R extends string, D>(
+  grammar: Grammar<M, R, D>,
+  select: Select<M, R, D>
+): Select<M, R, D> | undefined {
   switch (select.orient) {
     case 'top': {
-      const res = zipUp(select.zipTop);
-      if (res === undefined) return undefined;
-      const [step, zipTop] = res;
+      const res = zipUp(select.zipTop)
+      if (res === undefined) return undefined
+      const [step, zipTop] = res
       return select
         .set('zipTop', zipTop)
-        .set('zipBot', select.zipBot.unshift(step));
+        .set('zipBot', select.zipBot.unshift(step))
     }
     case 'bot': {
-      const res = zipUp(select.zipBot);
-      if (res === undefined) return undefined;
-      const [step, zipBot] = res;
+      const res = zipUp(select.zipBot)
+      if (res === undefined) return undefined
+      const [step, zipBot] = res
       return select
         .set('zipBot', zipBot)
-        .set('exp', wrapExpStep(step, select.exp));
+        .set('exp', wrapExpStep(grammar, step, select.exp))
     }
   }
 }
 
-export function moveLeftSelect<Meta, Rule>(select: Select<Meta, Rule>): Select<Meta, Rule> | undefined {
+export function moveLeftSelect<M extends string, R extends string, D>(select: Select<M, R, D>): Select<M, R, D> | undefined {
   switch (select.orient) {
     case 'top': {
-      return undefined;
+      return undefined
     }
     case 'bot': {
-      const res = zipLeft(select.exp, select.zipBot);
-      if (res === undefined) return undefined;
-      const [exp, zipBot] = res;
+      const res = zipLeft(select.exp, select.zipBot)
+      if (res === undefined) return undefined
+      const [exp, zipBot] = res
       return select
         .set('zipBot', zipBot)
-        .set('exp', exp);
+        .set('exp', exp)
     }
   }
 }
 
-export function moveRightSelect<Meta, Rule>(select: Select<Meta, Rule>): Select<Meta, Rule> | undefined {
+export function moveRightSelect<M extends string, R extends string, D>(select: Select<M, R, D>): Select<M, R, D> | undefined {
   switch (select.orient) {
     case 'top': {
-      return undefined;
+      return undefined
     }
     case 'bot': {
-      const res = zipRight(select.exp, select.zipBot);
-      if (res === undefined) return undefined;
-      const [exp, zipBot] = res;
+      const res = zipRight(select.exp, select.zipBot)
+      if (res === undefined) return undefined
+      const [exp, zipBot] = res
       return select
         .set('zipBot', zipBot)
-        .set('exp', exp);
+        .set('exp', exp)
     }
   }
 }
 
-export function moveDownSelect<Meta, Rule>(i: number, select: Select<Meta, Rule>): Select<Meta, Rule> | undefined {
+export function moveDownSelect<M extends string, R extends string, D>(i: number, select: Select<M, R, D>): Select<M, R, D> | undefined {
   switch (select.orient) {
     case 'top': {
-      const res = zipDown(i, select.zipBot);
-      if (res === undefined) return undefined;
-      const [step, zipBot] = res;
+      const res = zipDown(i, select.zipBot)
+      if (res === undefined) return undefined
+      const [step, zipBot] = res
       return select
         .set('zipTop', select.zipTop.unshift(step))
-        .set('zipBot', zipBot);
+        .set('zipBot', zipBot)
     }
     case 'bot': {
-      const res = zipDownExp(i, select.exp);
-      if (res === undefined) return undefined;
-      const [step, exp] = res;
+      const res = zipDownExp(i, select.exp)
+      if (res === undefined) return undefined
+      const [step, exp] = res
       return select
         .set('zipBot', select.zipBot.unshift(step))
-        .set('exp', exp);
+        .set('exp', exp)
     }
   }
 }
 
-export function displaySelect<Meta, Rule, A>(displayGrammar: GrammarDisplayer<Meta, Rule, A>, wrapZip: (out: A) => A, wrapExp: (out: A) => A, select: Select<Meta, Rule>): GrammarDisplayerChild<Meta, Rule, A> {
-  const { exp: exp0, out: out0 } = displayExpression(displayGrammar, select.exp);
-  const { exp: exp1, out: out1 } = displayZipper(displayGrammar, fixZipBot(select.orient, select.zipBot))({ exp: exp0, out: wrapExp(out0) });
-  return displayZipper(displayGrammar, select.zipTop)({ exp: exp1, out: wrapZip(out1) });
+export function displaySelect<M extends string, R extends string, D, A>(
+  displayGrammar: GrammarDisplayer<M, R, D, A>,
+  wrapZip: (out: A[]) => A[],
+  wrapExp: (out: A[]) => A[],
+  select: Select<M, R, D>
+): GrammarDisplayerKid<M, R, D, A> {
+  const { exp: exp0, out: out0 } = displayExpression(displayGrammar, select.exp)
+  const { exp: exp1, out: out1 } = displayZipper(displayGrammar, fixZipBot(select.orient, select.zipBot))({ exp: exp0, out: wrapExp(out0) })
+  return displayZipper(displayGrammar, select.zipTop)({ exp: exp1, out: wrapZip(out1) })
 }

@@ -1,55 +1,60 @@
-import { Record, RecordOf } from "immutable";
-import { displayExpression, Expression, GrammarDisplayer, GrammarDisplayerChild } from "./Grammar";
-import { zipLeft, zipRight, Zipper, zipDownExp, zipUp, wrapExpStep, displayZipper } from "./Zipper";
+import { Record, RecordOf } from "immutable"
+import { displayExpression, Expression, Grammar, GrammarDisplayer, GrammarDisplayerKid } from "./Grammar"
+import { zipLeft, zipRight, Zipper, zipDownExp, zipUp, wrapExpStep, displayZipper } from "./Zipper"
 
-export type CursorProps<Meta, Rule> = {
-  zip: Zipper<Meta, Rule>,
-  exp: Expression<Meta, Rule>,
+export type CursorProps<M extends string, R extends string, D> = {
+  zip: Zipper<M, R, D>,
+  exp: Expression<M, R, D>,
 }
 
-export type Cursor<Meta, Rule> = RecordOf<CursorProps<Meta, Rule>>;
+export type Cursor<M extends string, R extends string, D> = RecordOf<CursorProps<M, R, D>>
 
-export function makeCursor<Meta, Rule>(props: CursorProps<Meta, Rule>): Cursor<Meta, Rule> { return Record(props)(); }
+export function makeCursor<M extends string, R extends string, D>(props: CursorProps<M, R, D>): Cursor<M, R, D> { return Record(props)() }
 
-export function moveUpCursor<Meta, Rule>(cursor: Cursor<Meta, Rule>):
-  Cursor<Meta, Rule> | undefined {
-  const res = zipUp(cursor.zip);
-  if (res === undefined) return undefined;
-  const [step, zip] = res;
+export function moveUpCursor<M extends string, R extends string, D>(
+  grammar: Grammar<M, R, D>,
+  cursor: Cursor<M, R, D>
+): Cursor<M, R, D> | undefined {
+  const res = zipUp(cursor.zip)
+  if (res === undefined) return undefined
+  const [step, zip] = res
   return cursor
-    .set('exp', wrapExpStep(step, cursor.exp))
-    .set('zip', zip);
+    .set('exp', wrapExpStep(grammar, step, cursor.exp))
+    .set('zip', zip)
 }
 
-export function moveLeftCursor<Meta, Rule>(cursor: Cursor<Meta, Rule>): Cursor<Meta, Rule> | undefined {
-  const res = zipLeft(cursor.exp, cursor.zip);
-  if (res === undefined) return undefined;
-  const [exp, zip] = res;
-  return cursor
-    .set('exp', exp)
-    .set('zip', zip);
-}
-
-export function moveRightCursor<Meta, Rule>(cursor: Cursor<Meta, Rule>): Cursor<Meta, Rule> | undefined {
-  const res = zipRight(cursor.exp, cursor.zip);
-  if (res === undefined) return undefined;
-  const [exp, zip] = res;
+export function moveLeftCursor<M extends string, R extends string, D>(cursor: Cursor<M, R, D>): Cursor<M, R, D> | undefined {
+  const res = zipLeft(cursor.exp, cursor.zip)
+  if (res === undefined) return undefined
+  const [exp, zip] = res
   return cursor
     .set('exp', exp)
-    .set('zip', zip);
+    .set('zip', zip)
 }
 
-export function moveDownCursor<Meta, Rule>(i: number, cursor: Cursor<Meta, Rule>): Cursor<Meta, Rule> | undefined {
-  const res = zipDownExp(i, cursor.exp);
-  if (res === undefined) return undefined;
-  const [step, exp] = res;
+export function moveRightCursor<M extends string, R extends string, D>(cursor: Cursor<M, R, D>): Cursor<M, R, D> | undefined {
+  const res = zipRight(cursor.exp, cursor.zip)
+  if (res === undefined) return undefined
+  const [exp, zip] = res
   return cursor
     .set('exp', exp)
-    .set('zip', cursor.zip.unshift(step));
+    .set('zip', zip)
 }
 
-export function displayCursor<Meta, Rule, A>(grammarDisplayer: GrammarDisplayer<Meta, Rule, A>, wrapExp: (out: A) => A, cursor: Cursor<Meta, Rule>): GrammarDisplayerChild<Meta, Rule, A> {
-  const { exp, out } = displayExpression(grammarDisplayer, cursor.exp);
-  return displayZipper(grammarDisplayer, cursor.zip)
-    ({ exp, out: wrapExp(out) });
+export function moveDownCursor<M extends string, R extends string, D>(i: number, cursor: Cursor<M, R, D>): Cursor<M, R, D> | undefined {
+  const res = zipDownExp(i, cursor.exp)
+  if (res === undefined) return undefined
+  const [step, exp] = res
+  return cursor
+    .set('exp', exp)
+    .set('zip', cursor.zip.unshift(step))
+}
+
+export function displayCursor<M extends string, R extends string, D, A>(
+  grammarDisplayer: GrammarDisplayer<M, R, D, A>,
+  wrapExp: (out: A[]) => A[],
+  cursor: Cursor<M, R, D>
+): GrammarDisplayerKid<M, R, D, A> {
+  const { exp, out } = displayExpression(grammarDisplayer, cursor.exp)
+  return displayZipper(grammarDisplayer, cursor.zip)({ exp, out: wrapExp(out) })
 }
