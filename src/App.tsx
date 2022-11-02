@@ -4,9 +4,11 @@ import './App.css'
 import { Direction, directionFromKey } from './zypr-generic/Direction'
 import { Editor, escapeSelect, displayEditor, interactEditorQuery, escapeQuery, moveEditorSelect, moveEditorCursor, backspaceEditor } from './zypr-generic/Editor'
 import { displayExpression } from './zypr-generic/Grammar'
-import { D, editorInit, M, R } from './zypr-generic/languages/Lang1'
 import { fixZipBot } from './zypr-generic/Selection'
 import { displayZipper } from './zypr-generic/Zipper'
+import { M, R, D } from './zypr-generic/languages/Lang1'
+// import { editorInit } from './zypr-generic/languages/Lang1'
+import { editorInit } from './zypr-generic/languages/Lang2'
 
 type AppProps = {}
 

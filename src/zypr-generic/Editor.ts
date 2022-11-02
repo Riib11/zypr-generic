@@ -1,9 +1,9 @@
 import { List, Record, RecordOf } from "immutable"
-import { Cursor, displayCursor, makeCursor, moveDownCursor, moveLeftCursor, moveRightCursor, moveUpCursor } from "./Cursor"
+import { Cursor, CursorProps, displayCursor, makeCursor, moveDownCursor, moveLeftCursor, moveRightCursor, moveUpCursor } from "./Cursor"
 import { Direction } from "./Direction"
-import { Expression, Grammar, GrammarDisplayer, makeExpression, makeHole } from "./Grammar"
+import { displayExpression, Expression, Grammar, GrammarDisplayer, makeExpression, makeHole } from "./Grammar"
 import { fixZipBot, moveDownSelect, moveLeftSelect, moveRightSelect, moveUpSelect, Select, SelectOrientation, makeSelect, displaySelect } from "./Selection"
-import { wrap, wrapExp, Zipper } from "./Zipper"
+import { displayZipper, wrap, wrapExp, Zipper } from "./Zipper"
 
 export type Mode<M extends string, R extends string, D>
   = CursorMode<M, R, D>
@@ -34,12 +34,19 @@ export type EditorQuery<M extends string, R extends string, D> = {
 
 export type EditorQueryResult<M extends string, R extends string, D>
   = { case: 'replace', exp: Expression<M, R, D> }
-  | { case: 'insert', zip: Zipper<M, R, D> }
+  | EditorQueryResultInsert<M, R, D>
   | { case: 'invalid', str: string }
   | { case: 'no query' }
 
+export type EditorQueryResultInsert<M extends string, R extends string, D> =
+  { case: 'insert', zip: Zipper<M, R, D> }
+
 export type EditorQueryHandler<M extends string, R extends string, D> =
-  (query: EditorQuery<M, R, D> | undefined) => EditorQueryResult<M, R, D>
+  (
+    cursor: Cursor<M, R, D>,
+    query: EditorQuery<M, R, D> | undefined
+  ) =>
+    EditorQueryResult<M, R, D>
 
 export type EditorProps<M extends string, R extends string, D> = {
   grammar: Grammar<M, R, D>,
@@ -62,7 +69,9 @@ export function displayEditor<M extends string, R extends string, D, A>(
       return displayCursor(
         editor.grammar,
         editorDisplayer.grammarDisplayer,
-        editorDisplayer.displayCursorExp(editor.mode.cursor, editor.queryHandler(editor.mode.query)),
+        editorDisplayer.displayCursorExp(
+          editor.mode.cursor,
+          editor.queryHandler(editor.mode.cursor, editor.mode.query)),
         editor.mode.cursor
       ).out
     }
@@ -309,7 +318,7 @@ export function interactEditorQuery<M extends string, R extends string, D>(event
         } else if (event.key === 'Delete') {
           // TODO
         } else if (event.key === 'Enter') {
-          const res = editor.queryHandler(query)
+          const res = editor.queryHandler(editor.mode.cursor, query)
           switch (res.case) {
             case 'replace': {
               editor1 = editor.set('mode', {

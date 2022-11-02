@@ -57,8 +57,6 @@ export function displayCursor<M extends string, R extends string, D, A>(
   cursor: Cursor<M, R, D>
 ): GrammarDisplayerKid<M, R, D, A> {
   const { exp, out } = displayExpression(grammarDisplayer, cursor.exp)
-  // console.log("cursor.zip out", displayZipper(grammarDisplayer, cursor.zip)({ exp, out: "@@" as unknown as A[] }).out)
-  // console.log("cursor.exp out:", out)
   return displayZipper(
     grammar,
     grammarDisplayer,

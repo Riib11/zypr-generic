@@ -138,10 +138,6 @@ export function displayZipper<M extends string, R extends string, D, A>(
   return ({ exp, out }) => {
     let step = zip.get(0)
     if (step === undefined) return { exp, out }
-    // console.log("==== displayZipper")
-    // console.log("step", step.toJS())
-    // console.log("displayStep(...).out", displayStep(grammarDisplayer, step)({ exp, out }).out)
-
     return (
       displayZipper(grammar, grammarDisplayer, zip.shift())
         (displayStep(grammar, grammarDisplayer, step)({ exp, out })))
@@ -153,30 +149,11 @@ export function displayStep<M extends string, R extends string, D, A>(
   grammarDisplayer: GrammarDisplayer<M, R, D, A>,
   step: Step<M, R, D>,
 ): (kid: GrammarDisplayerKid<M, R, D, A>) => GrammarDisplayerKid<M, R, D, A> {
-  return ({ exp, out }) => {
-
-    console.log("==== displayStep")
-    console.log("leftsRev.map(...)",
-      step.leftsRev.reverse().map(e => displayExpression(grammarDisplayer, e).out).toJS())
-    console.log("out", out)
-    console.log("rights.map(...)",
-      step.rights.map(e => displayExpression(grammarDisplayer, e).out).toJS())
-    console.log("kids", step.leftsRev.reverse().map(e => displayExpression(grammarDisplayer, e))
-      .concat(List([{ exp, out }]))
-      .concat(step.rights.map(e => displayExpression(grammarDisplayer, e))).map(x => x.out).toJS())
-    console.log("grammarDisplayer(...)",
-      grammarDisplayer(
-        exp,
-        step.leftsRev.reverse().map(e => displayExpression(grammarDisplayer, e))
-          .concat(List([{ exp, out }]))
-          .concat(step.rights.map(e => displayExpression(grammarDisplayer, e)))).out
-    )
-
-    return grammarDisplayer(
+  return ({ exp, out }) =>
+    grammarDisplayer(
       wrapExpStep(grammar, step, exp),
       step.leftsRev.reverse().map(e => displayExpression(grammarDisplayer, e))
         .concat(List([{ exp, out }]))
         .concat(step.rights.map(e => displayExpression(grammarDisplayer, e))))
-  }
 }
 
