@@ -152,6 +152,7 @@ export default class App extends React.Component<AppProps, AppState> {
       </span>
     )
     let modeHtml: JSX.Element
+    const grammar = this.state.editor.grammar
     const grammarDisplayer = this.state.editor.printer.grammarDisplayer
     switch (this.state.editor.mode.case) {
       case 'cursor': {
@@ -162,7 +163,7 @@ export default class App extends React.Component<AppProps, AppState> {
             <tbody>
               <tr>
                 <td><span className="table-key">zipper</span></td>
-                <td><span className="code">{displayZipper(grammarDisplayer, cursor.zip)({ exp: cursor.exp, out: ["@"] }).out}</span></td>
+                <td><span className="code">{displayZipper(grammar, grammarDisplayer, cursor.zip)({ exp: cursor.exp, out: ["@"] }).out}</span></td>
               </tr>
               <tr>
                 <td><span className="table-key">expression</span></td>
@@ -184,11 +185,11 @@ export default class App extends React.Component<AppProps, AppState> {
             <tbody>
               <tr>
                 <td><span className="table-key">top zipper</span></td>
-                <td><span className="code">{displayZipper(grammarDisplayer, select.zipTop)({ exp: select.exp, out: ["@"] }).out}</span></td>
+                <td><span className="code">{displayZipper(grammar, grammarDisplayer, select.zipTop)({ exp: select.exp, out: ["@"] }).out}</span></td>
               </tr>
               <tr>
                 <td><span className="table-key">bot zipper</span></td>
-                <td><span className="code">{displayZipper(grammarDisplayer, fixZipBot(select.orient, select.zipBot))({ exp: select.exp, out: ["@"] }).out}</span></td>
+                <td><span className="code">{displayZipper(grammar, grammarDisplayer, fixZipBot(select.orient, select.zipBot))({ exp: select.exp, out: ["@"] }).out}</span></td>
               </tr>
               <tr>
                 <td><span className="table-key">expression</span></td>
@@ -208,7 +209,7 @@ export default class App extends React.Component<AppProps, AppState> {
               <td>{editorHtml}</td>
             </tr>
             <tr>
-              <td><span className="table-key">mode</span></td>
+              <td><span className="table-key">{this.state.editor.mode.case}</span></td>
               <td>{modeHtml}</td>
             </tr>
           </tbody>

@@ -34,20 +34,22 @@ const grammar: Grammar<M, R, D> = makeGrammar<M, R, D>({
 
 export function makeVar(label?: string) { return makeExpression<M, R, D>(grammar, { meta: 'exp', rule: 'var', data: { label: label ?? "" }, kids: List([]) }) }
 
-export function makeApp(apl: Expression<M, R, D>, arg: Expression<M, R, D>, indented?: boolean) { return makeExpression<M, R, D>(grammar, { meta: 'exp', rule: 'var', data: { indented: indented ?? false }, kids: List([apl, arg]) }) }
+export function makeApp(apl: Expression<M, R, D>, arg: Expression<M, R, D>, indented?: boolean) { return makeExpression<M, R, D>(grammar, { meta: 'exp', rule: 'app', data: { indented: indented ?? false }, kids: List([apl, arg]) }) }
 
 export function makeHole() { return makeExpression<M, R, D>(grammar, { meta: 'exp', rule: grammar.holeRule.exp, data: grammar.holeData.exp, kids: List([]) }) }
 
 const expressionPrinter = makeGrammarDisplayer<M, R, D, string>((exp, kids) => {
   switch (exp.rule) {
     case 'var': return [(exp.data as { label: string }).label]
-    case 'app': return [`${kids.get(0)?.out.join("")} ${kids.get(1)?.out.join("")}`]
+    case 'app': {
+      console.log("print kids", kids.toJS())
+      return [`(${kids.get(0)?.out?.join("")} ${kids.get(1)?.out?.join("")})`]
+    }
     case 'hole': return ["?"]
   }
 })
 
 const grammarRenderer = makeGrammarDisplayer<M, R, D, JSX.Element>((exp, kids) => {
-  console.log(exp.rule)
   switch (exp.rule) {
     case 'var': return [<div className="exp exp-var">{(exp.data as { label: string }).label}</div>]
     case 'app': return [<div className="exp exp-app">({kids.get(0)?.out} {kids.get(1)?.out})</div>]
@@ -68,7 +70,7 @@ export const editorInit: Editor<M, R, D> = makeEditor<M, R, D>({
     displayCursorExp: (cursor: Cursor<M, R, D>, res) => out => {
       switch (res.case) {
         case 'insert': {
-          const zipRen = displayZipper(grammarRenderer, res.zip)({
+          const zipRen = displayZipper(grammar, grammarRenderer, res.zip)({
             exp: cursor.exp,
             out: [<div className="query-out">{out}</div>]
           })

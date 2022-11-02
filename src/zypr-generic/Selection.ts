@@ -108,12 +108,13 @@ export function moveDownSelect<M extends string, R extends string, D>(i: number,
 }
 
 export function displaySelect<M extends string, R extends string, D, A>(
+  grammar: Grammar<M, R, D>,
   displayGrammar: GrammarDisplayer<M, R, D, A>,
   wrapZip: (out: A[]) => A[],
   wrapExp: (out: A[]) => A[],
   select: Select<M, R, D>
 ): GrammarDisplayerKid<M, R, D, A> {
   const { exp: exp0, out: out0 } = displayExpression(displayGrammar, select.exp)
-  const { exp: exp1, out: out1 } = displayZipper(displayGrammar, fixZipBot(select.orient, select.zipBot))({ exp: exp0, out: wrapExp(out0) })
-  return displayZipper(displayGrammar, select.zipTop)({ exp: exp1, out: wrapZip(out1) })
+  const { exp: exp1, out: out1 } = displayZipper(grammar, displayGrammar, fixZipBot(select.orient, select.zipBot))({ exp: exp0, out: wrapExp(out0) })
+  return displayZipper(grammar, displayGrammar, select.zipTop)({ exp: exp1, out: wrapZip(out1) })
 }

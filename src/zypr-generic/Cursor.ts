@@ -51,10 +51,17 @@ export function moveDownCursor<M extends string, R extends string, D>(i: number,
 }
 
 export function displayCursor<M extends string, R extends string, D, A>(
+  grammar: Grammar<M, R, D>,
   grammarDisplayer: GrammarDisplayer<M, R, D, A>,
   wrapExp: (out: A[]) => A[],
   cursor: Cursor<M, R, D>
 ): GrammarDisplayerKid<M, R, D, A> {
   const { exp, out } = displayExpression(grammarDisplayer, cursor.exp)
-  return displayZipper(grammarDisplayer, cursor.zip)({ exp, out: wrapExp(out) })
+  // console.log("cursor.zip out", displayZipper(grammarDisplayer, cursor.zip)({ exp, out: "@@" as unknown as A[] }).out)
+  // console.log("cursor.exp out:", out)
+  return displayZipper(
+    grammar,
+    grammarDisplayer,
+    cursor.zip)
+    ({ exp, out: wrapExp(out) })
 }

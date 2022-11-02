@@ -60,6 +60,7 @@ export function displayEditor<M extends string, R extends string, D, A>(
   switch (editor.mode.case) {
     case 'cursor': {
       return displayCursor(
+        editor.grammar,
         editorDisplayer.grammarDisplayer,
         editorDisplayer.displayCursorExp(editor.mode.cursor, editor.queryHandler(editor.mode.query)),
         editor.mode.cursor
@@ -67,6 +68,7 @@ export function displayEditor<M extends string, R extends string, D, A>(
     }
     case 'select': {
       return displaySelect(
+        editor.grammar,
         editorDisplayer.grammarDisplayer,
         editorDisplayer.displaySelectTop(editor.mode.select),
         editorDisplayer.displaySelectBot(editor.mode.select),
