@@ -77,6 +77,8 @@ export default class App extends React.Component<AppProps, AppState> {
         this.updateEditor(moveEditorCursor(dir))
       }
       event.preventDefault()
+    } else if (event.key === 'Meta') {
+      // TODO
     } else if (event.key === 'Escape') {
       switch (this.state.editor.mode.case) {
         case 'cursor': {
