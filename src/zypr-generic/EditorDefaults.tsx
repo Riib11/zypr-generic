@@ -2,68 +2,73 @@ import { List } from "immutable"
 import { mod } from "../Number"
 import { Cursor } from "./Cursor"
 import { EditorDisplayer, EditorQuery, EditorQueryHandler, EditorQueryResult, EditorQueryResultInsert } from "./Editor"
-import { displayExpression, Expression, Grammar, GrammarDisplayer, makeExpression, makeHole } from "./Grammar"
+import { displayExpression, Expression, Grammar, GrammarDisplayer, GrammarDisplayerOut, makeExpression, makeHole } from "./Grammar"
 import { M } from "./languages/Lang1"
 import { Select } from "./Selection"
 import { displayZipper, makeStep } from "./Zipper"
 
 // printing
 
-export function defaultEditorPrinter<M extends string, R extends string, D>
-  (
+export function defaultEditorPrinter
+  <M extends string, R extends string, D, E>(
     grammar: Grammar<M, R, D>,
-    grammarPrinter: GrammarDisplayer<M, R, D, string>):
-  EditorDisplayer<M, R, D, string> {
+    grammarPrinter: GrammarDisplayer<M, R, D, string, E>,
+    displayerEnvInit: E
+  ):
+  EditorDisplayer<M, R, D, string, E> {
   return {
     grammarDisplayer: grammarPrinter,
-    displayCursorExp: (cursor, res) => (out) => ["{"].concat(out).concat(["}"]),
-    displaySelectTop: (select) => (out) => ["[0]{"].concat(out).concat(["}[0]"]),
-    displaySelectBot: (select) => (out) => ["[1]{"].concat(out).concat(["}[1]"]),
+    displayCursorExp: (cursor, res) => (out) => env => ["{"].concat(out(env)).concat(["}"]),
+    displaySelectTop: (select) => (out) => env => ["[0]{"].concat(out(env)).concat(["}[0]"]),
+    displaySelectBot: (select) => (out) => env => ["[1]{"].concat(out(env)).concat(["}[1]"]),
+    displayerEnvInit
   }
 }
 
 // rendering
 
-export function defaultEditorRenderer<M extends string, R extends string, D>
+export function defaultEditorRenderer<M extends string, R extends string, D, E>
   (
     grammar: Grammar<M, R, D>,
-    grammarRenderer: GrammarDisplayer<M, R, D, JSX.Element>
+    grammarRenderer: GrammarDisplayer<M, R, D, JSX.Element, E>,
+    displayerEnvInit: E
   ):
-  EditorDisplayer<M, R, D, JSX.Element> {
+  EditorDisplayer<M, R, D, JSX.Element, E> {
   return {
+    displayerEnvInit,
     grammarDisplayer: grammarRenderer,
     displayCursorExp: (cursor, res) =>
-      (out: JSX.Element[]) => {
+      (out: GrammarDisplayerOut<JSX.Element, E>) => {
         switch (res.case) {
-          case 'insert': {
-            const zipRen = displayZipper(grammar, grammarRenderer, res.zip)({
+          case 'insert': return env => {
+            const zipRen = displayZipper<M, R, D, JSX.Element, E>(grammar, grammarRenderer, res.zip)({
               exp: cursor.exp,
-              out: [<div className="query-out">{out}</div>]
+              out: env => [<div className="query-out">{out(env)}</div>]
             })
-            return [<div className="cursor"><div className="query"><div className="query-result query-result-insert" >{zipRen.out}</div></div></div>]
+            return [<div className="cursor"><div className="query"><div className="query-result query-result-insert" >{zipRen.out(env)}</div></div></div>]
           }
-          case 'replace': {
+          case 'replace': return env => {
             const expRen = displayExpression(grammarRenderer, res.exp)
-            return [<div className="cursor"><div className="query"><div className="query-result query-result-replace">{expRen.out}</div><div className="query-out">{out}</div></div></div>]
+            return [<div className="cursor"><div className="query"><div className="query-result query-result-replace">{expRen.out(env)}</div><div className="query-out">{out(env)}</div></div></div>]
           }
-          case 'invalid': return [<div className="cursor"><div className="query"><div className="query-result query-result-invalid">{res.str}</div><div className="query-out">{out}</div></div></div>]
-          case 'no query': return [<div className="cursor">{out}</div>]
+          case 'invalid': return env => [<div className="cursor"><div className="query"><div className="query-result query-result-invalid">{res.str}</div><div className="query-out">{out(env)}</div></div></div>]
+          case 'no query': return env => [<div className="cursor">{out(env)}</div>]
         }
       },
-    displaySelectTop: (select) => (out) => [<div className="select select-top">{out}</div>],
-    displaySelectBot: (select) => (out) => [<div className="select select-bot">{out}</div>],
+    displaySelectTop: (select) => (out) => env => [<div className="select select-top">{out(env)}</div>],
+    displaySelectBot: (select) => (out) => env => [<div className="select select-bot">{out(env)}</div>],
   }
 }
 
 // query handling
 
-export function defaultQueryHandler<M extends string, R extends string, D>
+export function defaultQueryHandler<M extends string, R extends string, D, E>
   (
     grammar: Grammar<M, R, D>,
     inserts: { [rule in R]: ((cursor: Cursor<M, R, D>, str: string) => boolean) | undefined },
     replaces: { [rule in R]: ((cursor: Cursor<M, R, D>, str: string) => D | undefined) | undefined }
   ):
-  EditorQueryHandler<M, R, D> {
+  EditorQueryHandler<M, R, D, E> {
   return (cursor, query) => {
     const meta = cursor.exp.meta;
     const rules = grammar.rules[meta]
@@ -75,7 +80,7 @@ export function defaultQueryHandler<M extends string, R extends string, D>
     for (const rule of rules) {
       const insert = inserts[rule]
       if (insert === undefined || !insert(cursor, query.str)) continue
-      let results: EditorQueryResultInsert<M, R, D>[] = []
+      let results: EditorQueryResultInsert<M, R, D, E>[] = []
       // for each kid with the same meta as cursor.exp
       const kids_metas = grammar.kids[rule]
       kids_metas.map((kid_meta, i) => {

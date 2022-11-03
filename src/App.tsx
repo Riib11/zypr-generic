@@ -6,27 +6,27 @@ import { Editor, escapeSelect, displayEditor, interactEditorQuery, escapeQuery, 
 import { displayExpression } from './zypr-generic/Grammar'
 import { fixZipBot } from './zypr-generic/Selection'
 import { displayZipper } from './zypr-generic/Zipper'
-import { M, R, D } from './zypr-generic/languages/Lang1'
-// import { editorInit } from './zypr-generic/languages/Lang1'
-import { editorInit } from './zypr-generic/languages/Lang2'
+import { M, R, D, E } from './zypr-generic/languages/Lang1'
+import { editorInit } from './zypr-generic/languages/Lang1'
+// import { editorInit } from './zypr-generic/languages/Lang2'
 
 type AppProps = {}
 
 type AppState = {
-  editor: Editor<M, R, D>,
-  history: List<Editor<M, R, D>>,
-  future: List<Editor<M, R, D>>
+  editor: Editor<M, R, D, E>,
+  history: List<Editor<M, R, D, E>>,
+  future: List<Editor<M, R, D, E>>
 }
 
 export default class App extends React.Component<AppProps, AppState> {
   state = {
     editor: editorInit,
-    history: List<Editor<M, R, D>>(),
-    future: List<Editor<M, R, D>>()
+    history: List<Editor<M, R, D, E>>(),
+    future: List<Editor<M, R, D, E>>()
   }
 
-  updateEditor(f: (editor: Editor<M, R, D>) => Editor<M, R, D> | undefined, notarize: boolean = true): void {
-    const editor: Editor<M, R, D> | undefined = f(this.state.editor)
+  updateEditor(f: (editor: Editor<M, R, D, E>) => Editor<M, R, D, E> | undefined, notarize: boolean = true): void {
+    const editor: Editor<M, R, D, E> | undefined = f(this.state.editor)
     if (editor === undefined) return
     this.setState({
       ...this.state,
@@ -105,7 +105,7 @@ export default class App extends React.Component<AppProps, AppState> {
       ) {
         this.updateEditor(interactEditorQuery(event))
       } else {
-        this.updateEditor(backspaceEditor as (editor: Editor<M, R, D>) => Editor<M, R, D> | undefined)
+        this.updateEditor(backspaceEditor as (editor: Editor<M, R, D, E>) => Editor<M, R, D, E> | undefined)
       }
       event.preventDefault()
     } else if (event.ctrlKey) {
@@ -139,7 +139,7 @@ export default class App extends React.Component<AppProps, AppState> {
       <div className='app'>
         <div className='editor'>
           <div className='editor-inner'>
-            {displayEditor(this.state.editor, this.state.editor.renderer)}
+            {displayEditor(this.state.editor, this.state.editor.renderer)(this.state.editor.renderer.displayerEnvInit)}
           </div>
         </div>
         {this.renderConsole()}
@@ -150,7 +150,7 @@ export default class App extends React.Component<AppProps, AppState> {
   renderConsole(): JSX.Element {
     let editorHtml = (
       <span className="code">
-        {displayEditor(this.state.editor, this.state.editor.printer)}
+        {displayEditor(this.state.editor, this.state.editor.printer)(this.state.editor.printer.displayerEnvInit)}
       </span>
     )
     let modeHtml: JSX.Element
@@ -165,11 +165,11 @@ export default class App extends React.Component<AppProps, AppState> {
             <tbody>
               <tr>
                 <td><span className="table-key">zipper</span></td>
-                <td><span className="code">{displayZipper(grammar, grammarDisplayer, cursor.zip)({ exp: cursor.exp, out: ["@"] }).out}</span></td>
+                <td><span className="code">{displayZipper(grammar, grammarDisplayer, cursor.zip)({ exp: cursor.exp, out: env => ["@"] }).out(this.state.editor.renderer.displayerEnvInit)}</span></td>
               </tr>
               <tr>
                 <td><span className="table-key">expression</span></td>
-                <td><span className="code">{displayExpression(grammarDisplayer, cursor.exp).out}</span></td>
+                <td><span className="code">{displayExpression(grammarDisplayer, cursor.exp).out(this.state.editor.renderer.displayerEnvInit)}</span></td>
               </tr>
               <tr>
                 <td><span className="table-key">query</span></td>
@@ -187,15 +187,15 @@ export default class App extends React.Component<AppProps, AppState> {
             <tbody>
               <tr>
                 <td><span className="table-key">top zipper</span></td>
-                <td><span className="code">{displayZipper(grammar, grammarDisplayer, select.zipTop)({ exp: select.exp, out: ["@"] }).out}</span></td>
+                <td><span className="code">{displayZipper(grammar, grammarDisplayer, select.zipTop)({ exp: select.exp, out: env => ["@"] }).out(this.state.editor.renderer.displayerEnvInit)}</span></td>
               </tr>
               <tr>
                 <td><span className="table-key">bot zipper</span></td>
-                <td><span className="code">{displayZipper(grammar, grammarDisplayer, fixZipBot(select.orient, select.zipBot))({ exp: select.exp, out: ["@"] }).out}</span></td>
+                <td><span className="code">{displayZipper(grammar, grammarDisplayer, fixZipBot(select.orient, select.zipBot))({ exp: select.exp, out: env => ["@"] }).out(this.state.editor.renderer.displayerEnvInit)}</span></td>
               </tr>
               <tr>
                 <td><span className="table-key">expression</span></td>
-                <td><span className="code">{displayExpression(grammarDisplayer, select.exp).out}</span></td>
+                <td><span className="code">{displayExpression(grammarDisplayer, select.exp).out(this.state.editor.renderer.displayerEnvInit)}</span></td>
               </tr>
             </tbody>
           </table>

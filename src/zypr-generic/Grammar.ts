@@ -45,22 +45,37 @@ export function makeHole<M extends string, R extends string, D>
 
 // displaying
 
-export type GrammarDisplayerKid<M, R, D, A> =
-  { exp: Expression<M, R, D>, out: A[] }
+export type GrammarDisplayerOut<A, E> = (env: E) => A[]
 
-export type GrammarDisplayer<M extends string, R extends string, D, A> =
-  (exp: Expression<M, R, D>, kids: List<GrammarDisplayerKid<M, R, D, A>>) =>
-    GrammarDisplayerKid<M, R, D, A>
+export type GrammarDisplayerKid<M, R, D, A, E> =
+  { exp: Expression<M, R, D>, out: GrammarDisplayerOut<A, E> }
 
-export function makeGrammarDisplayer<M extends string, R extends string, D, A>
-  (f: (exp: Expression<M, R, D>, kids: List<GrammarDisplayerKid<M, R, D, A>>) => A[]) {
-  return (exp: Expression<M, R, D>, kids: List<GrammarDisplayerKid<M, R, D, A>>) =>
+
+export type GrammarDisplayer
+  <M extends string, R extends string, D, A, E> = (
+    exp: Expression<M, R, D>,
+    kids: List<GrammarDisplayerKid<M, R, D, A, E>>
+  ) =>
+    GrammarDisplayerKid<M, R, D, A, E>
+
+export function makeGrammarDisplayer
+  <M extends string, R extends string, D, A, E>(
+    f: (
+      exp: Expression<M, R, D>,
+      kids: List<GrammarDisplayerKid<M, R, D, A, E>>
+    ) => GrammarDisplayerOut<A, E>) {
+  return (
+    exp: Expression<M, R, D>,
+    kids: List<GrammarDisplayerKid<M, R, D, A, E>>
+  ) =>
     ({ exp, out: f(exp, kids) })
 }
 
-export function displayExpression<M extends string, R extends string, D, A>(
-  grammarDisplayer: GrammarDisplayer<M, R, D, A>,
-  exp: Expression<M, R, D>
-): GrammarDisplayerKid<M, R, D, A> {
-  return grammarDisplayer(exp, exp.kids.map(e => displayExpression(grammarDisplayer, e)))
+export function displayExpression
+  <M extends string, R extends string, D, A, E>(
+    grammarDisplayer: GrammarDisplayer<M, R, D, A, E>,
+    exp: Expression<M, R, D>
+  ): GrammarDisplayerKid<M, R, D, A, E> {
+  return grammarDisplayer(exp,
+    exp.kids.map(exp => displayExpression(grammarDisplayer, exp)))
 }

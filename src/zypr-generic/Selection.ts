@@ -1,5 +1,5 @@
 import { Record, RecordOf } from "immutable"
-import { Expression, GrammarDisplayer, GrammarDisplayerKid, displayExpression, Grammar } from "./Grammar"
+import { Expression, GrammarDisplayer, GrammarDisplayerKid, displayExpression, Grammar, GrammarDisplayerOut } from "./Grammar"
 import { displayZipper, wrapExpStep, zipDown, zipDownExp, zipLeft, Zipper, zipRight, zipUp } from "./Zipper"
 
 export type SelectProps<M extends string, R extends string, D> = {
@@ -107,13 +107,13 @@ export function moveDownSelect<M extends string, R extends string, D>(i: number,
   }
 }
 
-export function displaySelect<M extends string, R extends string, D, A>(
+export function displaySelect<M extends string, R extends string, D, A, E>(
   grammar: Grammar<M, R, D>,
-  displayGrammar: GrammarDisplayer<M, R, D, A>,
-  wrapZip: (out: A[]) => A[],
-  wrapExp: (out: A[]) => A[],
+  displayGrammar: GrammarDisplayer<M, R, D, A, E>,
+  wrapZip: (out: GrammarDisplayerOut<A, E>) => GrammarDisplayerOut<A, E>,
+  wrapExp: (out: GrammarDisplayerOut<A, E>) => GrammarDisplayerOut<A, E>,
   select: Select<M, R, D>
-): GrammarDisplayerKid<M, R, D, A> {
+): GrammarDisplayerKid<M, R, D, A, E> {
   const { exp: exp0, out: out0 } = displayExpression(displayGrammar, select.exp)
   const { exp: exp1, out: out1 } = displayZipper(grammar, displayGrammar, fixZipBot(select.orient, select.zipBot))({ exp: exp0, out: wrapExp(out0) })
   return displayZipper(grammar, displayGrammar, select.zipTop)({ exp: exp1, out: wrapZip(out1) })

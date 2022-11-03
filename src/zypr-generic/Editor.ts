@@ -1,69 +1,75 @@
 import { List, Record, RecordOf } from "immutable"
 import { Cursor, CursorProps, displayCursor, makeCursor, moveDownCursor, moveLeftCursor, moveRightCursor, moveUpCursor } from "./Cursor"
 import { Direction } from "./Direction"
-import { displayExpression, Expression, Grammar, GrammarDisplayer, makeExpression, makeHole } from "./Grammar"
+import { displayExpression, Expression, Grammar, GrammarDisplayer, GrammarDisplayerOut, makeExpression, makeHole } from "./Grammar"
 import { fixZipBot, moveDownSelect, moveLeftSelect, moveRightSelect, moveUpSelect, Select, SelectOrientation, makeSelect, displaySelect } from "./Selection"
 import { displayZipper, wrap, wrapExp, Zipper } from "./Zipper"
 
-export type Mode<M extends string, R extends string, D>
-  = CursorMode<M, R, D>
-  | SelectMode<M, R, D>
+export type Mode<M extends string, R extends string, D, E>
+  = CursorMode<M, R, D, E>
+  | SelectMode<M, R, D, E>
 
-export type CursorMode<M extends string, R extends string, D> = {
+export type CursorMode<M extends string, R extends string, D, E> = {
   case: 'cursor',
   cursor: Cursor<M, R, D>,
-  query: EditorQuery<M, R, D> | undefined
+  query: EditorQuery<M, R, D, E> | undefined
 }
 
-export type SelectMode<M extends string, R extends string, D> = {
+export type SelectMode<M extends string, R extends string, D, E> = {
   case: 'select',
   select: Select<M, R, D>
 }
 
-export type EditorDisplayer<M extends string, R extends string, D, A> = {
-  grammarDisplayer: GrammarDisplayer<M, R, D, A>,
-  displayCursorExp: (cursor: Cursor<M, R, D>, res: EditorQueryResult<M, R, D>) => (out: A[]) => A[],
-  displaySelectTop: (select: Select<M, R, D>) => (out: A[]) => A[],
-  displaySelectBot: (select: Select<M, R, D>) => (out: A[]) => A[]
-}
+export type EditorDisplayer
+  <M extends string, R extends string, D, A, E> = {
+    grammarDisplayer: GrammarDisplayer<M, R, D, A, E>,
+    displayCursorExp: (cursor: Cursor<M, R, D>, res: EditorQueryResult<M, R, D, E>) => (out: GrammarDisplayerOut<A, E>) => GrammarDisplayerOut<A, E>,
+    displaySelectTop: (select: Select<M, R, D>) => (out: GrammarDisplayerOut<A, E>) => GrammarDisplayerOut<A, E>,
+    displaySelectBot: (select: Select<M, R, D>) => (out: GrammarDisplayerOut<A, E>) => GrammarDisplayerOut<A, E>
+    displayerEnvInit: E
+  }
 
-export type EditorQuery<M extends string, R extends string, D> = {
+export type EditorQuery<M extends string, R extends string, D, E> = {
   str: string,
   i: number,
 }
 
-export type EditorQueryResult<M extends string, R extends string, D>
+export type EditorQueryResult<M extends string, R extends string, D, E>
   = { case: 'replace', exp: Expression<M, R, D> }
-  | EditorQueryResultInsert<M, R, D>
+  | EditorQueryResultInsert<M, R, D, E>
   | { case: 'invalid', str: string }
   | { case: 'no query' }
 
-export type EditorQueryResultInsert<M extends string, R extends string, D> =
+export type EditorQueryResultInsert<M extends string, R extends string, D, E> =
   { case: 'insert', zip: Zipper<M, R, D> }
 
-export type EditorQueryHandler<M extends string, R extends string, D> =
+export type EditorQueryHandler<M extends string, R extends string, D, E> =
   (
     cursor: Cursor<M, R, D>,
-    query: EditorQuery<M, R, D> | undefined
+    query: EditorQuery<M, R, D, E> | undefined
   ) =>
-    EditorQueryResult<M, R, D>
+    EditorQueryResult<M, R, D, E>
 
-export type EditorProps<M extends string, R extends string, D> = {
-  grammar: Grammar<M, R, D>,
-  printer: EditorDisplayer<M, R, D, string>,
-  renderer: EditorDisplayer<M, R, D, JSX.Element>,
-  queryHandler: EditorQueryHandler<M, R, D>,
-  mode: Mode<M, R, D>
-}
+export type EditorProps
+  <M extends string, R extends string, D, E> = {
+    grammar: Grammar<M, R, D>,
+    printer: EditorDisplayer<M, R, D, string, E>,
+    renderer: EditorDisplayer<M, R, D, JSX.Element, E>,
+    queryHandler: EditorQueryHandler<M, R, D, E>,
+    mode: Mode<M, R, D, E>
+  }
 
-export type Editor<M extends string, R extends string, D> = RecordOf<EditorProps<M, R, D>>
+export type Editor
+  <M extends string, R extends string, D, E> =
+  RecordOf<EditorProps<M, R, D, E>>
 
-export function makeEditor<M extends string, R extends string, D>(props: EditorProps<M, R, D>): Editor<M, R, D> { return Record(props)() }
+export function makeEditor<M extends string, R extends string, D, E>(props: EditorProps<M, R, D, E>): Editor<M, R, D, E> { return Record(props)() }
 
-export function displayEditor<M extends string, R extends string, D, A>(
-  editor: Editor<M, R, D>,
-  editorDisplayer: EditorDisplayer<M, R, D, A>
-): A[] {
+export function displayEditor
+  <M extends string, R extends string, D, A, E>(
+    editor: Editor<M, R, D, E>,
+    editorDisplayer: EditorDisplayer<M, R, D, A, E>
+  ): GrammarDisplayerOut<A, E> {
   switch (editor.mode.case) {
     case 'cursor': {
       return displayCursor(
@@ -87,14 +93,18 @@ export function displayEditor<M extends string, R extends string, D, A>(
   }
 }
 
-export function escapeQuery<M extends string, R extends string, D>(editor: Editor<M, R, D>): Editor<M, R, D> {
+export function escapeQuery
+  <M extends string, R extends string, D, E>(editor: Editor<M, R, D, E>): Editor<M, R, D, E> {
   switch (editor.mode.case) {
     case 'cursor': return editor.set('mode', { ...editor.mode, query: undefined })
     case 'select': return editor
   }
 }
 
-export function escapeSelect<M extends string, R extends string, D>(editor: Editor<M, R, D>): Editor<M, R, D> {
+export function escapeSelect
+  <M extends string, R extends string, D, E>
+  (editor: Editor<M, R, D, E>):
+  Editor<M, R, D, E> {
   switch (editor.mode.case) {
     case 'cursor': return editor
     case 'select': {
@@ -127,7 +137,11 @@ export function escapeSelect<M extends string, R extends string, D>(editor: Edit
     }
   }
 }
-export function enterSelect<M extends string, R extends string, D>(editor: Editor<M, R, D>, orient: SelectOrientation): Editor<M, R, D> | undefined {
+export function enterSelect
+  <M extends string, R extends string, D, E>(
+    editor: Editor<M, R, D, E>,
+    orient: SelectOrientation
+  ): Editor<M, R, D, E> | undefined {
   switch (editor.mode.case) {
     case 'cursor': {
       return editor.set('mode', {
@@ -144,7 +158,9 @@ export function enterSelect<M extends string, R extends string, D>(editor: Edito
   }
 }
 
-export function moveEditorCursorUp<M extends string, R extends string, D>(editor: Editor<M, R, D>): Editor<M, R, D> | undefined {
+export function moveEditorCursorUp<M extends string, R extends string, D, E>
+  (editor: Editor<M, R, D, E>):
+  Editor<M, R, D, E> | undefined {
   switch (editor.mode.case) {
     case 'cursor': {
       const cursor = moveUpCursor(editor.grammar, editor.mode.cursor)
@@ -157,7 +173,9 @@ export function moveEditorCursorUp<M extends string, R extends string, D>(editor
   }
 }
 
-export function moveEditorCursorDown<M extends string, R extends string, D>(editor: Editor<M, R, D>): Editor<M, R, D> | undefined {
+export function moveEditorCursorDown<M extends string, R extends string, D, E>
+  (editor: Editor<M, R, D, E>):
+  Editor<M, R, D, E> | undefined {
   switch (editor.mode.case) {
     case 'cursor': {
       const cursor = moveDownCursor(0, editor.mode.cursor)
@@ -170,7 +188,7 @@ export function moveEditorCursorDown<M extends string, R extends string, D>(edit
   }
 }
 
-export function moveEditorCursorLeft<M extends string, R extends string, D>(editor: Editor<M, R, D>): Editor<M, R, D> | undefined {
+export function moveEditorCursorLeft<M extends string, R extends string, D, E>(editor: Editor<M, R, D, E>): Editor<M, R, D, E> | undefined {
   switch (editor.mode.case) {
     case 'cursor': {
       const cursor = moveLeftCursor(editor.mode.cursor)
@@ -183,7 +201,7 @@ export function moveEditorCursorLeft<M extends string, R extends string, D>(edit
   }
 }
 
-export function moveEditorCursorRight<M extends string, R extends string, D>(editor: Editor<M, R, D>): Editor<M, R, D> | undefined {
+export function moveEditorCursorRight<M extends string, R extends string, D, E>(editor: Editor<M, R, D, E>): Editor<M, R, D, E> | undefined {
   switch (editor.mode.case) {
     case 'cursor': {
       const cursor = moveRightCursor(editor.mode.cursor)
@@ -196,9 +214,13 @@ export function moveEditorCursorRight<M extends string, R extends string, D>(edi
   }
 }
 
-export function fixSelect<M extends string, R extends string, D>(editor: Editor<M, R, D>): Editor<M, R, D> {
+export function fixSelect
+  <M extends string, R extends string, D, E>
+  (editor: Editor<M, R, D, E>):
+  Editor<M, R, D, E> {
   switch (editor.mode.case) {
-    case 'cursor': return editor
+    case 'cursor':
+      return editor
     case 'select': {
       if (editor.mode.select.zipBot.isEmpty()) {
         return escapeSelect(editor)
@@ -207,9 +229,10 @@ export function fixSelect<M extends string, R extends string, D>(editor: Editor<
       }
     }
   }
+  return editor
 }
 
-export function moveEditorCursor<M extends string, R extends string, D>(dir: Direction): (editor: Editor<M, R, D>) => Editor<M, R, D> | undefined {
+export function moveEditorCursor<M extends string, R extends string, D, E>(dir: Direction): (editor: Editor<M, R, D, E>) => Editor<M, R, D, E> | undefined {
   return editor => {
     switch (dir) {
       case 'up': return moveEditorCursorUp(editor)
@@ -220,7 +243,7 @@ export function moveEditorCursor<M extends string, R extends string, D>(dir: Dir
   }
 }
 
-export function moveEditorSelect<M extends string, R extends string, D>(dir: Direction): (editor: Editor<M, R, D>) => Editor<M, R, D> | undefined {
+export function moveEditorSelect<M extends string, R extends string, D, E>(dir: Direction): (editor: Editor<M, R, D, E>) => Editor<M, R, D, E> | undefined {
   return editor => {
     switch (dir) {
       case 'up': return moveEditorSelectUp(editor)
@@ -231,7 +254,7 @@ export function moveEditorSelect<M extends string, R extends string, D>(dir: Dir
   }
 }
 
-export function moveEditorSelectUp<M extends string, R extends string, D>(editor: Editor<M, R, D>): Editor<M, R, D> | undefined {
+export function moveEditorSelectUp<M extends string, R extends string, D, E>(editor: Editor<M, R, D, E>): Editor<M, R, D, E> | undefined {
   switch (editor.mode.case) {
     case 'cursor': {
       const editor1 = enterSelect(editor, 'top')
@@ -246,7 +269,7 @@ export function moveEditorSelectUp<M extends string, R extends string, D>(editor
   }
 }
 
-export function moveEditorSelectDown<M extends string, R extends string, D>(editor: Editor<M, R, D>): Editor<M, R, D> | undefined {
+export function moveEditorSelectDown<M extends string, R extends string, D, E>(editor: Editor<M, R, D, E>): Editor<M, R, D, E> | undefined {
   switch (editor.mode.case) {
     case 'cursor': {
       const editor1 = enterSelect(editor, 'bot')
@@ -261,7 +284,7 @@ export function moveEditorSelectDown<M extends string, R extends string, D>(edit
   }
 }
 
-export function moveEditorSelectLeft<M extends string, R extends string, D>(editor: Editor<M, R, D>): Editor<M, R, D> | undefined {
+export function moveEditorSelectLeft<M extends string, R extends string, D, E>(editor: Editor<M, R, D, E>): Editor<M, R, D, E> | undefined {
   switch (editor.mode.case) {
     case 'cursor': {
       return undefined
@@ -274,7 +297,7 @@ export function moveEditorSelectLeft<M extends string, R extends string, D>(edit
   }
 }
 
-export function moveEditorSelectRight<M extends string, R extends string, D>(editor: Editor<M, R, D>): Editor<M, R, D> | undefined {
+export function moveEditorSelectRight<M extends string, R extends string, D, E>(editor: Editor<M, R, D, E>): Editor<M, R, D, E> | undefined {
   switch (editor.mode.case) {
     case 'cursor': {
       return undefined
@@ -287,7 +310,7 @@ export function moveEditorSelectRight<M extends string, R extends string, D>(edi
   }
 }
 
-export function fixQuery<M extends string, R extends string, D>(editor: Editor<M, R, D>): Editor<M, R, D> | undefined {
+export function fixQuery<M extends string, R extends string, D, E>(editor: Editor<M, R, D, E>): Editor<M, R, D, E> | undefined {
   if (
     editor.mode.case === 'cursor' &&
     editor.mode.query !== undefined &&
@@ -298,9 +321,9 @@ export function fixQuery<M extends string, R extends string, D>(editor: Editor<M
   return editor
 }
 
-export function interactEditorQuery<M extends string, R extends string, D>(event: KeyboardEvent): (editor: Editor<M, R, D>) => Editor<M, R, D> | undefined {
+export function interactEditorQuery<M extends string, R extends string, D, E>(event: KeyboardEvent): (editor: Editor<M, R, D, E>) => Editor<M, R, D, E> | undefined {
   return (editor) => {
-    let editor1: Editor<M, R, D> | undefined
+    let editor1: Editor<M, R, D, E> | undefined
     switch (editor.mode.case) {
       case 'cursor': {
         const cursor = editor.mode.cursor
@@ -357,7 +380,7 @@ export function interactEditorQuery<M extends string, R extends string, D>(event
   }
 }
 
-export function backspaceEditor<M extends string, R extends string, D>(editor: Editor<M, R, D>): Editor<M, R, D> | undefined {
+export function backspaceEditor<M extends string, R extends string, D, E>(editor: Editor<M, R, D, E>): Editor<M, R, D, E> | undefined {
   switch (editor.mode.case) {
     case 'cursor': {
       let cursor = editor.mode.cursor

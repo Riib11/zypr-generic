@@ -130,11 +130,11 @@ export function zipDownExp<M extends string, R extends string, D>(
 
 // displaying
 
-export function displayZipper<M extends string, R extends string, D, A>(
+export function displayZipper<M extends string, R extends string, D, A, E>(
   grammar: Grammar<M, R, D>,
-  grammarDisplayer: GrammarDisplayer<M, R, D, A>,
+  grammarDisplayer: GrammarDisplayer<M, R, D, A, E>,
   zip: Zipper<M, R, D>,
-): (kid: GrammarDisplayerKid<M, R, D, A>) => GrammarDisplayerKid<M, R, D, A> {
+): (kid: GrammarDisplayerKid<M, R, D, A, E>) => GrammarDisplayerKid<M, R, D, A, E> {
   return ({ exp, out }) => {
     let step = zip.get(0)
     if (step === undefined) return { exp, out }
@@ -144,11 +144,11 @@ export function displayZipper<M extends string, R extends string, D, A>(
   }
 }
 
-export function displayStep<M extends string, R extends string, D, A>(
+export function displayStep<M extends string, R extends string, D, A, E>(
   grammar: Grammar<M, R, D>,
-  grammarDisplayer: GrammarDisplayer<M, R, D, A>,
+  grammarDisplayer: GrammarDisplayer<M, R, D, A, E>,
   step: Step<M, R, D>,
-): (kid: GrammarDisplayerKid<M, R, D, A>) => GrammarDisplayerKid<M, R, D, A> {
+): (kid: GrammarDisplayerKid<M, R, D, A, E>) => GrammarDisplayerKid<M, R, D, A, E> {
   return ({ exp, out }) =>
     grammarDisplayer(
       wrapExpStep(grammar, step, exp),

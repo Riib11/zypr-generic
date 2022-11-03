@@ -1,5 +1,5 @@
 import { Record, RecordOf } from "immutable"
-import { displayExpression, Expression, Grammar, GrammarDisplayer, GrammarDisplayerKid } from "./Grammar"
+import { displayExpression, Expression, Grammar, GrammarDisplayer, GrammarDisplayerKid, GrammarDisplayerOut } from "./Grammar"
 import { zipLeft, zipRight, Zipper, zipDownExp, zipUp, wrapExpStep, displayZipper } from "./Zipper"
 
 export type CursorProps<M extends string, R extends string, D> = {
@@ -50,12 +50,12 @@ export function moveDownCursor<M extends string, R extends string, D>(i: number,
     .set('zip', cursor.zip.unshift(step))
 }
 
-export function displayCursor<M extends string, R extends string, D, A>(
+export function displayCursor<M extends string, R extends string, D, A, E>(
   grammar: Grammar<M, R, D>,
-  grammarDisplayer: GrammarDisplayer<M, R, D, A>,
-  wrapExp: (out: A[]) => A[],
+  grammarDisplayer: GrammarDisplayer<M, R, D, A, E>,
+  wrapExp: (out: GrammarDisplayerOut<A, E>) => GrammarDisplayerOut<A, E>,
   cursor: Cursor<M, R, D>
-): GrammarDisplayerKid<M, R, D, A> {
+): GrammarDisplayerKid<M, R, D, A, E> {
   const { exp, out } = displayExpression(grammarDisplayer, cursor.exp)
   return displayZipper(
     grammar,

@@ -15,6 +15,7 @@ Features
 export type M = 'exp'
 export type R = 'var' | 'app' | 'hole'
 export type D = { label: string } | undefined
+export type E = 'unit'
 
 export type Exp = Expression<M, R, D>
 
@@ -44,21 +45,21 @@ export const grammar: Grammar<M, R, D> = makeGrammar<M, R, D>({
 
 // printer
 
-export const grammarPrinter = makeGrammarDisplayer<M, R, D, string>((exp, kids) => {
+export const grammarPrinter = makeGrammarDisplayer<M, R, D, string, E>((exp, kids) => {
   switch (exp.rule) {
-    case 'var': return [(exp.data as { label: string }).label]
-    case 'app': return [`(${kids.get(0)?.out?.join("")} ${kids.get(1)?.out?.join("")})`]
-    case 'hole': return ["?"]
+    case 'var': return _ => [(exp.data as { label: string }).label]
+    case 'app': return _ => [`(${kids.get(0)?.out('unit')?.join("")} ${kids.get(1)?.out('unit')?.join("")})`]
+    case 'hole': return _ => ["?"]
   }
 })
 
 // renderer
 
-export const grammarRenderer = makeGrammarDisplayer<M, R, D, JSX.Element>((exp, kids) => {
+export const grammarRenderer = makeGrammarDisplayer<M, R, D, JSX.Element, E>((exp, kids) => {
   switch (exp.rule) {
-    case 'var': return [<div className="exp exp-var">{(exp.data as { label: string }).label}</div>]
-    case 'app': return [<div className="exp exp-app">({kids.get(0)?.out} {kids.get(1)?.out})</div>]
-    case 'hole': return [<div className="exp exp-hole">?</div>]
+    case 'var': return _ => [<div className="exp exp-var">{(exp.data as { label: string }).label}</div>]
+    case 'app': return _ => [<div className="exp exp-app">({kids.get(0)?.out('unit')} {kids.get(1)?.out('unit')})</div>]
+    case 'hole': return _ => [<div className="exp exp-hole">?</div>]
   }
 })
 
@@ -75,10 +76,10 @@ export const initExp =
 
 // editor
 
-export const editorInit = makeEditor<M, R, D>({
+export const editorInit = makeEditor<M, R, D, E>({
   grammar,
-  printer: defaultEditorPrinter(grammar, grammarPrinter),
-  renderer: defaultEditorRenderer(grammar, grammarRenderer),
+  printer: defaultEditorPrinter(grammar, grammarPrinter, 'unit'),
+  renderer: defaultEditorRenderer(grammar, grammarRenderer, 'unit'),
   queryHandler: defaultQueryHandler(
     grammar,
     {
