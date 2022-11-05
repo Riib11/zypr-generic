@@ -6,13 +6,13 @@ import { fixZipBot, moveDownSelect, moveLeftSelect, moveRightSelect, moveUpSelec
 import { displayZipper, wrap, wrapExp, Zipper } from "./Zipper"
 
 export type Mode<M extends string, R extends string, D, E>
-  = CursorMode<M, R, D, E>
+  = CursorMode<M, R, D>
   | SelectMode<M, R, D, E>
 
-export type CursorMode<M extends string, R extends string, D, E> = {
+export type CursorMode<M extends string, R extends string, D> = {
   case: 'cursor',
   cursor: Cursor<M, R, D>,
-  query: EditorQuery<M, R, D, E> | undefined
+  query: EditorQuery | undefined
 }
 
 export type SelectMode<M extends string, R extends string, D, E> = {
@@ -23,39 +23,46 @@ export type SelectMode<M extends string, R extends string, D, E> = {
 export type EditorDisplayer
   <M extends string, R extends string, D, A, E> = {
     grammarDisplayer: GrammarDisplayer<M, R, D, A, E>,
-    displayCursorExp: (cursor: Cursor<M, R, D>, res: EditorQueryResult<M, R, D, E>) => (out: GrammarDisplayerOut<A, E>) => GrammarDisplayerOut<A, E>,
+    displayCursorExp: (cursor: Cursor<M, R, D>, res: EditorQueryResult<M, R, D>) => (out: GrammarDisplayerOut<A, E>) => GrammarDisplayerOut<A, E>,
     displaySelectTop: (select: Select<M, R, D>) => (out: GrammarDisplayerOut<A, E>) => GrammarDisplayerOut<A, E>,
     displaySelectBot: (select: Select<M, R, D>) => (out: GrammarDisplayerOut<A, E>) => GrammarDisplayerOut<A, E>
     displayerEnvInit: E
   }
 
-export type EditorQuery<M extends string, R extends string, D, E> = {
+export type EditorQuery = {
   str: string,
   i: number,
 }
 
-export type EditorQueryResult<M extends string, R extends string, D, E>
+export type EditorQueryResult<M extends string, R extends string, D>
   = { case: 'replace', exp: Expression<M, R, D> }
-  | EditorQueryResultInsert<M, R, D, E>
+  | EditorQueryResultInsert<M, R, D>
   | { case: 'invalid', str: string }
   | { case: 'no query' }
 
-export type EditorQueryResultInsert<M extends string, R extends string, D, E> =
+export type EditorQueryResultInsert<M extends string, R extends string, D> =
   { case: 'insert', zip: Zipper<M, R, D> }
 
-export type EditorQueryHandler<M extends string, R extends string, D, E> =
+export type EditorQueryHandler<M extends string, R extends string, D> =
   (
     cursor: Cursor<M, R, D>,
-    query: EditorQuery<M, R, D, E> | undefined
+    query: EditorQuery | undefined
   ) =>
-    EditorQueryResult<M, R, D, E>
+    EditorQueryResult<M, R, D>
+
+export type EditorActionHandler<M extends string, R extends string, D, E> =
+  {
+    cursor: {},
+    select: {},
+  }
 
 export type EditorProps
   <M extends string, R extends string, D, E> = {
     grammar: Grammar<M, R, D>,
     printer: EditorDisplayer<M, R, D, string, E>,
     renderer: EditorDisplayer<M, R, D, JSX.Element, E>,
-    queryHandler: EditorQueryHandler<M, R, D, E>,
+    queryHandler: EditorQueryHandler<M, R, D>,
+    actionHandler: EditorActionHandler<M, R, D, E>,
     mode: Mode<M, R, D, E>
   }
 
@@ -64,6 +71,16 @@ export type Editor
   RecordOf<EditorProps<M, R, D, E>>
 
 export function makeEditor<M extends string, R extends string, D, E>(props: EditorProps<M, R, D, E>): Editor<M, R, D, E> { return Record(props)() }
+
+export function matchMode<M extends string, R extends string, D, A, E, Out>(
+  editor: Editor<M, R, D, E>,
+  cases: {
+    cursor: (cursor: Cursor<M, R, D>) => Out,
+    select: (select: Cursor<M, R, D>) => Out
+  }
+): Out {
+  throw new Error("unimplemented");
+}
 
 export function displayEditor
   <M extends string, R extends string, D, A, E>(
@@ -91,6 +108,7 @@ export function displayEditor
       ).out
     }
   }
+  throw new Error("impossible");
 }
 
 export function escapeQuery

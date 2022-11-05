@@ -19,8 +19,8 @@ export function defaultEditorPrinter
   return {
     grammarDisplayer: grammarPrinter,
     displayCursorExp: (cursor, res) => (out) => env => ["{"].concat(out(env)).concat(["}"]),
-    displaySelectTop: (select) => (out) => env => ["[0]{"].concat(out(env)).concat(["}[0]"]),
-    displaySelectBot: (select) => (out) => env => ["[1]{"].concat(out(env)).concat(["}[1]"]),
+    displaySelectTop: (select) => (out) => env => ["{"].concat(out(env)).concat(["}"]),
+    displaySelectBot: (select) => (out) => env => ["{"].concat(out(env)).concat(["}"]),
     displayerEnvInit
   }
 }

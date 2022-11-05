@@ -15,32 +15,38 @@ Features
 export const grammarPrinter = makeGrammarDisplayer<M, R, D, string, E>((exp, kids) => {
   switch (exp.rule) {
     case 'var':
-      return _ => [(exp.data as { label: string }).label]
+      return env => [(exp.data as { label: string }).label]
     case 'app': {
       const [apl, arg] = [kids.get(0), kids.get(1)]
       if (arg?.exp.rule === 'app')
-        return _ => [`${apl?.out('unit')?.join("")} (${arg?.out('unit')?.join("")})`]
+        return env => [`${apl?.out(env)?.join("")} (${arg?.out(env)?.join("")})`]
       else
-        return _ => [`${apl?.out('unit')?.join("")} ${arg?.out('unit')?.join("")}`]
+        return env => [`${apl?.out(env)?.join("")} ${arg?.out(env)?.join("")}`]
     }
     case 'hole':
-      return _ => ["?"]
+      return env => ["?"]
   }
 })
 
 export const grammarRenderer = makeGrammarDisplayer<M, R, D, JSX.Element, E>((exp, kids) => {
   switch (exp.rule) {
     case 'var':
-      return _ => [<div className="exp exp-var">{(exp.data as { label: string }).label}</div>]
+      return env => [<div className="exp exp-var">{(exp.data as { label: string }).label}</div>]
     case 'app': {
       const [apl, arg] = [kids.get(0), kids.get(1)]
       if (arg?.exp.rule === 'app')
-        return _ => [<div className="exp exp-app">{kids.get(0)?.out('unit')} ({kids.get(1)?.out('unit')})</div>]
+        return env0 => {
+          const env1 = Lang1.incrementIndent(env0)
+          return [<div className="exp exp-app">{apl?.out(env0)}{Lang1.renderIndent(env1.indent)}({arg?.out(env1)})</div>]
+        }
       else
-        return _ => [<div className="exp exp-app">{kids.get(0)?.out('unit')} {kids.get(1)?.out('unit')}</div>]
+        return env0 => {
+          const env1 = Lang1.incrementIndent(env0)
+          return [<div className="exp exp-app">{apl?.out(env0)}{Lang1.renderIndent(env1.indent)}{arg?.out(env1)}</div>]
+        }
     }
     case 'hole':
-      return _ => [<div className="exp exp-hole">?</div>]
+      return env => [<div className="exp exp-hole">?</div>]
   }
 })
 
@@ -48,5 +54,5 @@ export const grammarRenderer = makeGrammarDisplayer<M, R, D, JSX.Element, E>((ex
 
 export const editorInit =
   Lang1.editorInit
-    .set('renderer', defaultEditorRenderer(Lang1.grammar, grammarRenderer, 'unit'))
-    .set('printer', defaultEditorPrinter(Lang1.grammar, grammarPrinter, 'unit'))
+    .set('renderer', defaultEditorRenderer(Lang1.grammar, grammarRenderer, Lang1.initDisplayEnv))
+    .set('printer', defaultEditorPrinter(Lang1.grammar, grammarPrinter, Lang1.initDisplayEnv))

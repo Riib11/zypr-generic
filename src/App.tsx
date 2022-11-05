@@ -7,8 +7,8 @@ import { displayExpression } from './zypr-generic/Grammar'
 import { fixZipBot } from './zypr-generic/Selection'
 import { displayZipper } from './zypr-generic/Zipper'
 import { M, R, D, E } from './zypr-generic/languages/Lang1'
-import { editorInit } from './zypr-generic/languages/Lang1'
-// import { editorInit } from './zypr-generic/languages/Lang2'
+// import { editorInit } from './zypr-generic/languages/Lang1'
+import { editorInit } from './zypr-generic/languages/Lang2'
 
 type AppProps = {}
 
@@ -110,13 +110,15 @@ export default class App extends React.Component<AppProps, AppState> {
         this.updateEditor(backspaceEditor as (editor: Editor<M, R, D, E>) => Editor<M, R, D, E> | undefined)
       }
       event.preventDefault()
-    } else if (event.ctrlKey) {
+    } else if (event.ctrlKey || event.metaKey) {
       if (event.key === 'z') {
         this.undoEditor()
         event.preventDefault()
       } else if (event.key === 'Z') {
         this.redoEditor()
         event.preventDefault()
+      } else {
+        // TOOD
       }
       // TODO: cut/copy/paste
     } else if (event.altKey) {
@@ -209,7 +211,7 @@ export default class App extends React.Component<AppProps, AppState> {
         <table>
           <tbody>
             <tr>
-              <td><span className="table-key">editor</span></td>
+              <td><span className="table-key">mode</span></td>
               <td>{editorHtml}</td>
             </tr>
             <tr>

@@ -35,10 +35,21 @@ body {}
   display: inline;
 }
 
+/* indent */
+
+.indent {
+  display: inline;
+  white-space: pre;
+}
+
+/* cursor */
+
 .cursor {
   box-shadow: 0 0 0 1px blue;
   background: white;
 }
+
+/* select */
 
 .select-top {
   box-shadow: 0 0 0 1px blue;
@@ -49,6 +60,8 @@ body {}
   box-shadow: 0 0 0 1px blue;
   background: white;
 }
+
+/* query */
 
 .query {
   white-space: pre;
@@ -86,7 +99,6 @@ body {}
 .query-result-replace+.query-out {
   background-color: rgb(220, 220, 220);
 }
-
 
 /* console */
 
