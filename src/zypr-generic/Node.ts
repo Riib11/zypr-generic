@@ -19,11 +19,3 @@ export function buildExpNode<Dat>(
         kids
     }
 }
-
-export function buildZipNode<Dat>(
-    dat: Dat,
-    kidsLeft: Node<Dat>[],
-    kidsRight: Node<Dat>[]
-): Node<Dat> {
-    throw new Error("TODO");
-}

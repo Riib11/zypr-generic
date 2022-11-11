@@ -2,7 +2,7 @@ import { List, Record, RecordOf } from "immutable";
 import { EndoPart } from "../../Endo";
 import * as Backend from "../Backend";
 import { Dat, Exp, PreExp, Step, Zip } from "../language/Language1";
-import { buildExpNode, buildZipNode, Node } from "../Node";
+import { buildExpNode, Node } from "../Node";
 
 type Env = RecordOf<{
     indented: boolean

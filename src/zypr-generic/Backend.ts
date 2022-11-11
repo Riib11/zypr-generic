@@ -56,11 +56,14 @@ export type Orient = 'up' | 'down'
 // buildBackend
 
 export function buildBackend<Exp, Step, Dat, Env>(
+    // formatting
     initEnv: Env,
     formatExp: (exp: Exp) => (env: Env) => Node<Dat>,
     formatZip: (zip: List<Step>) => (kid: (env: Env) => Node<Dat>) => (env: Env) => Node<Dat>,
+    // actions
     interpQuery: (mode: Mode<Exp, List<Step>>, str: string) => QueryInterp<Exp, List<Step>>[],
     handleAction: (act: Action<Exp, List<Step>>) => EndoPart<State<Exp, List<Step>, Dat>>,
+    // program
     initExp: Exp,
 ): Backend<Exp, List<Step>, Dat> {
     return {
