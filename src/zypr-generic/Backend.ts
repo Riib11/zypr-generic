@@ -92,13 +92,3 @@ export function buildBackend<Exp, Step, Dat, Env>(
         })
     }
 }
-
-
-/*
-export type State_<Exp, Zip, Dat> = {
-    mode: Mode<Exp, Zip>,
-    clipboard: Clipboard<Exp, Zip>,
-    history: List<State<Exp, Zip, Dat>>,
-    future: List<State<Exp, Zip, Dat>>
-}
-*/
