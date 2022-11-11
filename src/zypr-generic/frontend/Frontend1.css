@@ -1,0 +1,58 @@
+/* node */
+
+.node {
+    display: inline;
+}
+
+/* node query */
+
+.node-query-replace {
+    /* box-shadow: 0 0 0 1px orange; */
+}
+
+.node-query-replace-exp-new {
+    background-color: rgb(255, 197, 89);
+    padding-right: 0.2rem;
+}
+
+.node-query-replace-exp-old {
+    background-color: rgb(186, 186, 186);
+    padding-left: 0.2rem;
+}
+
+.node-query-invalid {}
+
+.node-query-invalid-string {}
+
+.node-query-invalid-exp {}
+
+/* exp */
+
+.node-exp {}
+
+/* node var */
+
+.node-exp-var {}
+
+.node-exp-var-label {}
+
+/* node app */
+
+.node-exp-app {}
+
+.node-exp-app-apl {}
+
+.node-exp-app-arg {}
+
+
+/* punctuation */
+
+.punc {
+    display: inline;
+}
+
+.punc-paren {}
+
+.punc-paren-left {}
+
+.punc-paren-right {}

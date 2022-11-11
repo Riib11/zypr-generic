@@ -1,4 +1,3 @@
-import { List } from "immutable";
 import React from "react";
 import { EndoPart } from "../Endo";
 import * as Backend from './Backend'
@@ -45,7 +44,7 @@ export default class Editor<Exp, Zip, Dat>
     }
 
     render() {
-        return this.props.render(this)
+        return [this.props.render(this)]
     }
 }
 
@@ -61,17 +60,22 @@ export function renderEditor<Exp, Zip, Dat>(
     ): void {
         const backend = f(editor.state.backend)
         if (backend !== undefined)
-            editor.setState({ ...editor.state, backend })
+            editor.setState({
+                backend,
+                query: { str: "", i: 0 }
+            })
     }
     return (backend: Backend.Backend<Exp, Zip, Dat>) => {
 
         function render(editor: Editor<Exp, Zip, Dat>) {
-            const node = editor.props.backend.formatMode
-                (editor.state.backend.mode, editor.state.query)
+            const node = editor.props.backend.format
+                (editor.state.backend, editor.state.query)
             return [
                 // TODO: onClick={...}
                 <div className="editor">
-                    {renderNode(node)}
+                    <div className="editor-inner">
+                        {renderNode(node)}
+                    </div>
                 </div>
             ]
 
@@ -89,11 +93,17 @@ export function renderEditor<Exp, Zip, Dat>(
                 act = { case: 'move', dir: 'up' }
             } else if (event.key === 'ArrowDown' && isQueryless) {
                 act = { case: 'move', dir: 'down' }
+            } else if (event.key === 'Enter') {
+                act = Backend.interpQueryAction(
+                    editor.props.backend,
+                    editor.state.backend,
+                    editor.state.query
+                ) ?? act
             } else {
                 const query = interactQuery(event, editor.state.query)
                 if (query !== undefined) {
                     const acts = editor.props.backend.interpQueryString
-                        (editor.state.backend.mode, query.str)
+                        (editor.state.backend, query.str)
                     act = acts[query.i % acts.length]
                 }
                 if (query !== undefined)

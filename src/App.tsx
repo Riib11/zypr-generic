@@ -1,5 +1,6 @@
 import React from 'react'
 import './App.css'
+import './zypr-generic/frontend/Frontend1.css'
 import { editor } from './zypr-generic/editor/Editor1A'
 
 type Props = {}

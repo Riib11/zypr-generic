@@ -66,18 +66,56 @@ export default function backend(): Backend.Backend<Exp, Zip, Dat> {
         }
     }
 
-    function interpQuery(mode: Backend.Mode<Exp, Zip>,
+    function interpQuery(st: Backend.State<Exp, Zip, Dat>,
         str: string
     ): Backend.Action<Exp, Zip>[] {
-        // throw new Error("TODO");
-        return []
+        return [
+            { case: 'replace', exp: { case: 'var', dat: { label: str } } }
+        ]
     }
 
     function handleAction(
         act: Backend.Action<Exp, Zip>
     ): EndoPart<Backend.State<Exp, Zip, Dat>> {
-        // throw new Error("TODO");
-        return (st) => st
+        switch (act.case) {
+            case 'replace': {
+                return Backend.updateMode(mode => {
+                    switch (mode.case) {
+                        case 'cursor': return {
+                            case: 'cursor',
+                            cursor: {
+                                zip: mode.cursor.zip,
+                                exp: act.exp
+                            }
+                        }
+                        case 'select': return undefined
+                    }
+                })
+            }
+            case 'insert': {
+                return Backend.updateMode(mode => {
+                    switch (mode.case) {
+                        case 'cursor': return {
+                            case: 'cursor',
+                            cursor: {
+                                zip: mode.cursor.zip.concat(act.zip), // TODO: correct order of concat?
+                                exp: mode.cursor.exp
+                            }
+                        }
+                        case 'select': return {
+                            case: 'select',
+                            select: {
+                                zip_top: mode.select.zip_top,
+                                zip_bot: act.zip, // TODO: fix via orient
+                                orient: mode.select.orient,
+                                exp: mode.select.exp,
+                            }
+                        }
+                    }
+                })
+            }
+            default: return (st) => st // TODO
+        }
     }
 
     const initExp: Exp = {

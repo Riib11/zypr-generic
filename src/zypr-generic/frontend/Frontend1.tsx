@@ -18,8 +18,9 @@ export default function frontend<Exp, Zip>
     ) {
     function renderNode(node: Node<Dat>): JSX.Element[] {
         let classNames = ["node"]
-        function aux(es: JSX.Element[]): JSX.Element[] {
-            return [<div className={classNames.join(" ")}>{es}</div>]
+        function aux(es: JSX.Element[], extraClassNames?: string[]): JSX.Element {
+            const classNames_ = classNames.concat(extraClassNames ?? [])
+            return <div className={classNames_.join(" ")}>{es}</div>
         }
         switch (node.case) {
             case 'exp': {
@@ -30,35 +31,31 @@ export default function frontend<Exp, Zip>
                     classNames.push(node.modifier)
                 switch (node.dat.preExp.case) {
                     case 'var': {
-                        classNames.push("node-exp-var")
-                        return aux([
-                            <div className="exp-var-label">{node.dat.preExp.dat.label}</div>
-                        ])
+                        return [aux([
+                            aux([<span>{node.dat.preExp.dat.label}</span>], ["node-exp-var-label"])
+                        ], ["node-exp-var"])]
                     }
                     case 'app': {
-                        classNames.push("node-exp-app")
-                        return aux([
+                        return [aux([
                             <div className="punc punc-paren punc-paren-left">(</div>,
-                            <div className="exp-app-apl">{renderNode(node.kids[0])}</div>,
-                            <div className="exp-app-arg">{renderNode(node.kids[1])}</div>,
+                            aux(renderNode(node.kids[0]), ["node-exp-app-arg"]),
+                            aux(renderNode(node.kids[1]), ["node-exp-app-apl"]),
                             <div className="punc punc-paren punc-paren-right">)</div>
-                        ])
+                        ], ["node-exp-app"])]
                     }
                 }
             }
             case 'query-replace': {
-                classNames.push("node-query-replace")
-                return aux([
-                    <div className="query-replace-exp-new">{renderNode(node.kids[0])}</div>,
-                    <div className="query-invalid-exp-old">{renderNode(node.kids[1])}</div>
-                ])
+                return [aux([
+                    aux(renderNode(node.kids[0]), ["node-query-replace-exp-new"]),
+                    aux(renderNode(node.kids[1]), ["node-query-replace-exp-old"]),
+                ], ["node-query-replace"])]
             }
             case 'query-invalid': {
-                classNames.push("node-query-invalid")
-                return aux([
-                    <div className="query-invalid-string">{node.string}</div>,
-                    <div className="query-invalid-exp">{renderNode(node.kids[0])}</div>
-                ])
+                return [aux([
+                    aux([<span>{node.string}</span>], ["node-query-invalid-string"]),
+                    aux(renderNode(node.kids[0]), ["node-query-invalid-exp"])
+                ], ["node-query-invalid"])]
             }
         }
     }
