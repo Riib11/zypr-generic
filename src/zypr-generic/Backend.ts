@@ -69,7 +69,7 @@ export function buildBackend<Exp, Step, Dat, Env>(
         props: {
             formatMode: (mode, query) => {
                 function formatQueryAround(kid: (env: Env) => Node<Dat>): (env: Env) => Node<Dat> {
-                    if (query.str.length === 0) {
+                    if (query.str.length > 0) {
                         const acts = interpQueryString(mode, query.str)
                         if (acts.length === 0) {
                             return (env) => ({

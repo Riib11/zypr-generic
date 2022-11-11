@@ -8,7 +8,7 @@ type Env = RecordOf<{
     indented: boolean
 }>
 
-export default function backend1(): Backend.Backend<Exp, Zip, Dat> {
+export default function backend(): Backend.Backend<Exp, Zip, Dat> {
 
     const initEnv: Env = Record({
         indented: false

@@ -1,5 +1,5 @@
 import * as Backend from "../Backend";
-import Editor, { renderEditor } from "../Editor";
+import Editor, { renderEditor, State } from "../Editor";
 import { Dat } from '../language/Language1'
 import { Node } from "../Node";
 
@@ -12,8 +12,10 @@ actually just appears as a exp node, with the className (added by
 */
 
 export default function frontend<Exp, Zip>
-    (backend: Backend.Backend<Exp, Zip, Dat>):
-    Editor<Exp, Zip, Dat> {
+    (
+        initExp: Exp,
+        backend: Backend.Backend<Exp, Zip, Dat>
+    ) {
     function renderNode(node: Node<Dat>): JSX.Element[] {
         let classNames = ["node"]
         function aux(es: JSX.Element[]): JSX.Element[] {
@@ -60,5 +62,5 @@ export default function frontend<Exp, Zip>
             }
         }
     }
-    return renderEditor<Exp, Zip, Dat>(renderNode)(backend)
+    return renderEditor<Exp, Zip, Dat>(initExp, renderNode)(backend)
 }
