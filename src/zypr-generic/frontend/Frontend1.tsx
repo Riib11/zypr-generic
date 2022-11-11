@@ -1,5 +1,5 @@
 import * as Backend from "../Backend";
-import Editor, { buildEditor } from "../Editor";
+import Editor, { renderEditor } from "../Editor";
 import { Dat } from '../language/Language1'
 import { Node } from "../Node";
 
@@ -19,13 +19,13 @@ export default function frontend<Exp, Zip>
         function aux(es: JSX.Element[]): JSX.Element[] {
             return [<div className={classNames.join(" ")}>{es}</div>]
         }
-        switch (node.variant.case) {
+        switch (node.case) {
             case 'exp': {
                 if (node.dat.preExp === undefined)
                     throw new Error("impossible")
                 classNames.push("node-exp")
-                if (node.variant.modifier !== undefined)
-                    classNames.push(node.variant.modifier)
+                if (node.modifier !== undefined)
+                    classNames.push(node.modifier)
                 switch (node.dat.preExp.case) {
                     case 'var': {
                         classNames.push("node-exp-var")
@@ -54,11 +54,11 @@ export default function frontend<Exp, Zip>
             case 'query-invalid': {
                 classNames.push("node-query-invalid")
                 return aux([
-                    <div className="query-invalid-string">{node.variant.string}</div>,
-                    <div className="query-invalid-exp">{renderNode(node.kids[1])}</div>
+                    <div className="query-invalid-string">{node.string}</div>,
+                    <div className="query-invalid-exp">{renderNode(node.kids[0])}</div>
                 ])
             }
         }
     }
-    return buildEditor<Exp, Zip, Dat>(renderNode)(backend)
+    return renderEditor<Exp, Zip, Dat>(renderNode)(backend)
 }

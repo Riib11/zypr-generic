@@ -28,12 +28,7 @@ export default function backend1(): Backend.Backend<Exp, Zip, Dat> {
         }
     }
 
-    function applyEnv(env: Env, node: Node<Dat>): void {
-        node.dat.indented = env.indented
-    }
-
     const formatPreExp = (preExp: PreExp, env: Env, kids: Node<Dat>[]): Node<Dat> => {
-        // throw new Error("TODO: can i not use buildExpNode after all?");
         return buildExpNode(
             {
                 preExp,
@@ -73,7 +68,7 @@ export default function backend1(): Backend.Backend<Exp, Zip, Dat> {
 
     function interpQuery(mode: Backend.Mode<Exp, Zip>,
         str: string
-    ): Backend.QueryInterp<Exp, Zip>[] {
+    ): Backend.Action<Exp, Zip>[] {
         // throw new Error("TODO");
         return []
     }
