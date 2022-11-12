@@ -73,14 +73,82 @@ export function move(dir: Direction, zips: List<Zip>, exp: Exp): { zips: List<Zi
                 exp: fromTreeExp(treeExpKid)
             }
         }
+        case 'left': {
+            const zip = zips.get(0)
+            if (zip === undefined) return undefined
+            else {
+                const res = zipLeft(zip, exp)
+                if (res === undefined) return undefined
+                return {
+                    zips: zips.shift().unshift(res.zip),
+                    exp: res.exp
+                }
+            }
+        }
+        case 'right': {
+            const zip = zips.get(0)
+            if (zip === undefined) return undefined
+            else {
+                const res = zipRight(zip, exp)
+                if (res === undefined) return undefined
+                return {
+                    zips: zips.shift().unshift(res.zip),
+                    exp: res.exp
+                }
+            }
+        }
     }
 }
 
-// zipDown
+// zipLeft
+
+export const zipLeft = (zip: Zip, exp: Exp): { zip: Zip, exp: Exp } | undefined => {
+    const res = zipLeftTree(toTreeZip(zip), toTreeExp(exp))
+    if (res === undefined) return undefined
+    else return { zip: fromTreeZip(res.treeZip), exp: fromTreeExp(res.treeExp) }
+}
+
+export const zipLeftTree =
+    (treeZip: TreeZip, treeExp: TreeExp): { treeZip: TreeZip, treeExp: TreeExp } | undefined => {
+        const treeExpNew = treeZip.kidsLeft.get(0)
+        if (treeExpNew === undefined) return undefined
+        else return {
+            treeZip: {
+                case: treeZip.case,
+                dat: treeZip.dat,
+                kidsLeft: treeZip.kidsLeft.shift(),
+                kidsRight: treeZip.kidsRight.unshift(treeExp)
+            },
+            treeExp: treeExpNew
+        }
+    }
+
+// zipRight
+
+export const zipRight = (zip: Zip, exp: Exp): { zip: Zip, exp: Exp } | undefined => {
+    const res = zipRightTree(toTreeZip(zip), toTreeExp(exp))
+    if (res === undefined) return undefined
+    else return { zip: fromTreeZip(res.treeZip), exp: fromTreeExp(res.treeExp) }
+}
+
+export const zipRightTree =
+    (treeZip: TreeZip, treeExp: TreeExp): { treeZip: TreeZip, treeExp: TreeExp } | undefined => {
+        const treeExpNew = treeZip.kidsRight.get(0)
+        if (treeExpNew === undefined) return undefined
+        else return {
+            treeZip: {
+                case: treeZip.case,
+                dat: treeZip.dat,
+                kidsLeft: treeZip.kidsLeft.unshift(treeExp),
+                kidsRight: treeZip.kidsRight.shift()
+            },
+            treeExp: treeExpNew
+        }
+    }
 
 // zipUp
 
-export const zipUpTreeExp = (zip: Zip) => (treeExp: TreeExp): TreeExp => ({
+export const zipUpTree = (zip: Zip) => (treeExp: TreeExp): TreeExp => ({
     case: zip.case,
     dat: zip.dat,
     kids:
@@ -90,16 +158,16 @@ export const zipUpTreeExp = (zip: Zip) => (treeExp: TreeExp): TreeExp => ({
             .toArray()
 })
 
-export function zipsUpTreeExp(zips: List<Zip>): (treeExp: TreeExp) => TreeExp {
+export function zipsUpTree(zips: List<Zip>): (treeExp: TreeExp) => TreeExp {
     const zip = zips.get(0)
     if (zip === undefined) return (treeExp) => treeExp
     else return (treeExp): TreeExp =>
-        zipsUpTreeExp(zips.shift())
-            (zipUpTreeExp(zip)(treeExp))
+        zipsUpTree(zips.shift())
+            (zipUpTree(zip)(treeExp))
 }
 
 export const zipUp = (zip: Zip, exp: Exp): Exp =>
-    fromTreeExp(zipUpTreeExp(zip)(toTreeExp(exp)))
+    fromTreeExp(zipUpTree(zip)(toTreeExp(exp)))
 
-export const zipsUpExp = (zips: List<Zip>, exp: Exp): Exp =>
-    fromTreeExp(zipsUpTreeExp(zips)(toTreeExp(exp)))
+export const zipsUp = (zips: List<Zip>, exp: Exp): Exp =>
+    fromTreeExp(zipsUpTree(zips)(toTreeExp(exp)))
