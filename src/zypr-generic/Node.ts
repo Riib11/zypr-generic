@@ -4,21 +4,21 @@ export type Node<Dat> =
     { case: 'query-invalid', string: string, kids: Node<Dat>[] }
 
 export type SimpleNodeCases =
-    'cursor-clasp' |
-    'select-clasp-top' | 'select-clasp-bot' |
+    'cursor' |
+    'select-top' | 'select-bot' |
     'query-replace' | 'query-insert-top' | 'query-insert-bot'
 
 export const formatCursorClaspAround =
     <Dat, Env>(kid: (env: Env) => Node<Dat>) =>
-        (env: Env): Node<Dat> => ({ case: 'cursor-clasp', kids: [kid(env)] })
+        (env: Env): Node<Dat> => ({ case: 'cursor', kids: [kid(env)] })
 
 export const formatSelectClaspTopAround =
     <Dat, Env>(kid: (env: Env) => Node<Dat>) =>
-        (env: Env): Node<Dat> => ({ case: 'select-clasp-top', kids: [kid(env)] })
+        (env: Env): Node<Dat> => ({ case: 'select-top', kids: [kid(env)] })
 
 export const formatSelectClaspBotAround =
     <Dat, Env>(kid: (env: Env) => Node<Dat>) =>
-        (env: Env): Node<Dat> => ({ case: 'select-clasp-bot', kids: [kid(env)] })
+        (env: Env): Node<Dat> => ({ case: 'select-bot', kids: [kid(env)] })
 
 export const formatQueryReplaceAround =
     <Dat, Env>(kidNew: (env: Env) => Node<Dat>, kidOld: (env: Env) => Node<Dat>) =>

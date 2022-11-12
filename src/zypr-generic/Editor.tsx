@@ -87,6 +87,7 @@ export function renderEditor<Exp, Zip, Dat>(
                 const acts = editor.props.backend.interpQueryString
                     (editor.state.backend, query.str)
                 editor.setState({ ...editor.state, query })
+                event.preventDefault()
                 return
             } else {
                 const isQueryless = editor.state.query.str.length === 0
@@ -107,9 +108,11 @@ export function renderEditor<Exp, Zip, Dat>(
                         editor.state.query
                     ) ?? act
                 }
-                if (act !== undefined)
+                if (act !== undefined) {
+                    event.preventDefault()
                     modifyBackendState(editor,
                         editor.props.backend.handleAction(act))
+                }
             }
         }
 

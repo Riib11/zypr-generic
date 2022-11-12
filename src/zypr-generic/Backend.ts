@@ -44,7 +44,7 @@ export type Action<Exp, Zip>
     | { case: 'replace', exp: Exp }
     | { case: 'insert', zips: List<Zip> }
     | { case: BasicAction }
-export type BasicAction = 'undo' | 'redo' | 'copy' | 'paste' | 'delete' | 'move'
+export type BasicAction = 'undo' | 'redo' | 'copy' | 'cut' | 'paste'
 
 export type State<Exp, Zip, Dat> = RecordOf<State_<Exp, Zip, Dat>>
 export const makeState = <Exp, Zip, Dat>(state_: State_<Exp, Zip, Dat>): State<Exp, Zip, Dat> => Record<State_<Exp, Zip, Dat>>(state_)()

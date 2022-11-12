@@ -1,7 +1,7 @@
 import { List, Record, RecordOf } from "immutable";
 import { EndoPart } from "../../Endo";
 import * as Backend from "../Backend";
-import { Dat, Exp, PreExp, wrapZipExp, Zip } from "../language/Language1";
+import { Dat, Exp, move, PreExp, Zip } from "../language/Language1";
 import { Node } from "../Node";
 
 type Env = RecordOf<{
@@ -138,6 +138,17 @@ export default function backend(): Backend.Backend<Exp, Zip, Dat> {
                                 orient: mode.select.orient,
                                 exp: mode.select.exp,
                             }
+                        }
+                    }
+                })
+            }
+            case 'move': {
+                return Backend.updateMode((mode): Backend.Mode<Exp, Zip> | undefined => {
+                    switch (mode.case) {
+                        case 'cursor': {
+                            const res = move(act.dir, mode.cursor.zips, mode.cursor.exp)
+                            if (res === undefined) return undefined
+                            return { case: 'cursor', cursor: { zips: res.zips, exp: res.exp } }
                         }
                     }
                 })

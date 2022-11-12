@@ -38,25 +38,17 @@ export default function frontend<Exp, Zip>
                         ], ["node-exp-app"])]
 
                     case 'hol':
-                        return [aux([
-                            <span>?</span>
-                        ], ["node-exp-var"])]
+                        return [aux([<span>?</span>], ["node-exp-var"])]
                 }
             }
-            case 'cursor-clasp': return [
-                aux(
-                    [aux(renderNode(node.kids[0]), ["node-cursor-clasp-exp"])],
-                    ["node-cursor-clasp"])
+            case 'cursor': return [
+                aux(renderNode(node.kids[0]), ["node-cursor"])
             ]
-            case 'select-clasp-top': return [
-                aux(
-                    [aux(renderNode(node.kids[0]), ["node-select-clasp-top-zip"])],
-                    ["node-select-clasp-top"])
+            case 'select-top': return [
+                aux(renderNode(node.kids[0]), ["node-select-top"])
             ]
-            case 'select-clasp-bot': return [
-                aux(
-                    [aux(renderNode(node.kids[0]), ["node-select-clasp-bot-zip"])],
-                    ["node-select-clasp-bot"])
+            case 'select-bot': return [
+                aux(renderNode(node.kids[0]), ["node-select-bot"])
             ]
             case 'query-replace': {
                 return [aux([
@@ -65,12 +57,10 @@ export default function frontend<Exp, Zip>
                 ], ["node-query-replace"])]
             }
             case 'query-insert-top': {
-                return [aux(renderNode(node.kids[0]),
-                    ["node-query-insert-top"])]
+                return [aux(renderNode(node.kids[0]), ["node-query-insert-top"])]
             }
             case 'query-insert-bot': {
-                return [aux(renderNode(node.kids[0]),
-                    ["node-query-insert-bot"])]
+                return [aux(renderNode(node.kids[0]), ["node-query-insert-bot"])]
             }
             case 'query-invalid': {
                 return [aux([
