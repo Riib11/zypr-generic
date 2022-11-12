@@ -12,10 +12,7 @@ actually just appears as a exp node, with the className (added by
 */
 
 export default function frontend<Exp, Zip>
-    (
-        initExp: Exp,
-        backend: Backend.Backend<Exp, Zip, Dat>
-    ) {
+    (backend: Backend.Backend<Exp, Zip, Dat>) {
     function renderNode(node: Node<Dat>): JSX.Element[] {
         let classNames = ["node"]
         function aux(es: JSX.Element[], extraClassNames?: string[]): JSX.Element {
@@ -59,5 +56,5 @@ export default function frontend<Exp, Zip>
             }
         }
     }
-    return renderEditor<Exp, Zip, Dat>(initExp, renderNode)(backend)
+    return renderEditor<Exp, Zip, Dat>(renderNode)(backend)
 }

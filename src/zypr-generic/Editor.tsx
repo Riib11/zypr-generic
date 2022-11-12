@@ -51,7 +51,6 @@ export default class Editor<Exp, Zip, Dat>
 // buildEditor
 
 export function renderEditor<Exp, Zip, Dat>(
-    initExp: Exp,
     renderNode: (node: Node<Dat>) => JSX.Element[]
 ) {
     function modifyBackendState(
