@@ -5,11 +5,12 @@ export default function interactQuery(
     event: KeyboardEvent,
     query: Query
 ): Query | undefined {
-    if (event.key === 'ArrowUp' && query.str.length === 0) {
+    const isQueryless = query.str.length === 0
+    if (event.key === 'ArrowLeft' && !isQueryless) {
         event.preventDefault()
         return { str: query.str, i: query.i - 1 }
     }
-    else if (event.key === 'ArrowDown' && query.str.length === 0) {
+    else if (event.key === 'ArrowRight' && !isQueryless) {
         event.preventDefault()
         return { str: query.str, i: query.i + 1 }
     }

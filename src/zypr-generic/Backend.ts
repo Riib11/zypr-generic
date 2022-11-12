@@ -2,7 +2,7 @@ import { List, Record, RecordOf } from 'immutable'
 import { EndoPart } from '../Endo'
 import { Direction } from './Direction'
 import { Query } from './Editor'
-import { Node, NodeVariantExpModifier } from './Node'
+import { formatCursorClaspAround, formatQueryInsertBotAround, formatQueryInsertTopAround, formatQueryInvalidAround, formatQueryReplaceAround, formatSelectClaspBotAround, formatSelectClaspTopAround, Node } from './Node'
 
 // Env: render environment
 // Dat: render data
@@ -42,7 +42,7 @@ export type Action<Exp, Zip>
     = { case: 'move', dir: Direction }
     | { case: 'set_cursor', cursor: Cursor<Exp, Zip> }
     | { case: 'replace', exp: Exp }
-    | { case: 'insert', zip: List<Zip> }
+    | { case: 'insert', zips: List<Zip> }
     | { case: BasicAction }
 export type BasicAction = 'undo' | 'redo' | 'copy' | 'paste' | 'delete' | 'move'
 
@@ -59,13 +59,13 @@ export type Mode<Exp, Zip>
     = { case: 'cursor', cursor: Cursor<Exp, Zip> }
     | { case: 'select', select: Select<Exp, Zip> }
 
-export type Cursor<Exp, Zip> = { zip: List<Zip>, exp: Exp }
+export type Cursor<Exp, Zip> = { zips: List<Zip>, exp: Exp }
 
-export type Select<Exp, Zip> = { zip_top: List<Zip>, zip_bot: List<Zip>, exp: Exp, orient: Orient }
+export type Select<Exp, Zip> = { zipsTop: List<Zip>, zipsBot: List<Zip>, exp: Exp, orient: Orient }
 
 export type Clipboard<Exp, Zip>
     = { case: 'exp', exp: Exp }
-    | { case: 'zip', zip: List<Zip> }
+    | { case: 'zips', zips: List<Zip> }
     | undefined
 
 // up: the top of the select can move
@@ -87,8 +87,7 @@ export function undo<Exp, Zip, Dat>(): EndoPart<State<Exp, Zip, Dat>> {
     return (st) => {
         const st_ = st.get('history').get(0)
         if (st_ === undefined) return undefined
-        return st
-            .update('future', futr => futr.unshift(st))
+        return st.update('future', futr => futr.unshift(st))
     }
 }
 
@@ -96,8 +95,21 @@ export function redo<Exp, Zip, Dat>(): EndoPart<State<Exp, Zip, Dat>> {
     return (st) => {
         const st_ = st.get('future').get(0)
         if (st_ === undefined) return undefined
-        return st
-            .update('history', hist => hist.unshift(st))
+        return st.update('history', hist => hist.unshift(st))
+    }
+}
+
+export function fromZipBot<Exp, Zip>(select: Select<Exp, Zip>) {
+    switch (select.orient) {
+        case 'up': return select.zipsBot.reverse()
+        case 'down': return select.zipsBot
+    }
+}
+
+export function toZipBot<Exp, Zip>(select: Select<Exp, Zip>, zips: List<Zip>) {
+    switch (select.orient) {
+        case 'up': return zips.reverse()
+        case 'down': return zips
     }
 }
 
@@ -106,8 +118,8 @@ export function redo<Exp, Zip, Dat>(): EndoPart<State<Exp, Zip, Dat>> {
 export function buildBackend<Exp, Zip, Dat, Env>(
     // formatting
     initEnv: Env,
-    formatExp: (exp: Exp, modifier: NodeVariantExpModifier) => (env: Env) => Node<Dat>,
-    formatZip: (zip: List<Zip>, modifier: NodeVariantExpModifier) => (kid: (env: Env) => Node<Dat>) => (env: Env) => Node<Dat>,
+    formatExp: (exp: Exp) => (env: Env) => Node<Dat>,
+    formatZip: (zips: List<Zip>) => (kid: (env: Env) => Node<Dat>) => (env: Env) => Node<Dat>,
     // actions
     interpQueryString: (st: State<Exp, Zip, Dat>, str: string) => Action<Exp, Zip>[],
     handleAction: (act: Action<Exp, Zip>) => EndoPart<State<Exp, Zip, Dat>>,
@@ -121,33 +133,21 @@ export function buildBackend<Exp, Zip, Dat, Env>(
                     if (query.str.length > 0) {
                         const acts = interpQueryString(st, query.str)
                         if (acts.length === 0) {
-                            return (env) => ({
-                                case: 'query-invalid',
-                                string: query.str,
-                                kids: [kid(env)]
-                            })
+                            return formatQueryInvalidAround(query.str, kid)
                         } else {
                             const act = acts[query.i % acts.length]
                             switch (act.case) {
-                                case 'replace': {
-                                    return (env) => ({
-                                        case: 'query-replace',
-                                        kids: [
-                                            formatExp(act.exp, 'query-replace')(env),
-                                            kid(env)
-                                        ]
-                                    })
-                                }
-                                case 'insert': {
-                                    return (env) => ({
-                                        case: 'query-replace',
-                                        kids: [formatZip(act.zip, 'query-insert')(kid)(env)]
-                                    })
-                                }
-                                default: {
+                                case 'replace':
+                                    return formatQueryReplaceAround(
+                                        formatExp(act.exp),
+                                        kid)
+                                case 'insert':
+                                    return formatQueryInsertTopAround(
+                                        formatZip(act.zips)(
+                                            formatQueryInsertBotAround(kid)))
+                                default:
                                     // TODO: special display for other kinds of actions?
                                     return kid
-                                }
                             }
                         }
                     } else {
@@ -156,16 +156,20 @@ export function buildBackend<Exp, Zip, Dat, Env>(
                 }
 
                 switch (st.mode.case) {
-                    case 'cursor':
-                        return formatZip(st.mode.cursor.zip, undefined)
-                            (formatQueryAround
-                                (formatExp(st.mode.cursor.exp, 'cursor-clasp')))
+                    case 'cursor': {
+                        return formatZip(st.mode.cursor.zips)
+                            (formatQueryAround(
+                                formatCursorClaspAround(
+                                    formatExp(st.mode.cursor.exp))))
                             (initEnv)
+                    }
                     case 'select':
-                        return formatZip(st.mode.select.zip_top, undefined)
-                            (formatQueryAround
-                                (formatZip(st.mode.select.zip_bot, 'select-clasp-top')
-                                    (formatExp(st.mode.select.exp, 'select-clasp-bot'))))
+                        return formatZip(st.mode.select.zipsTop)
+                            (formatQueryAround(
+                                formatSelectClaspTopAround(
+                                    formatZip(st.mode.select.zipsBot)(
+                                        formatSelectClaspBotAround(
+                                            formatExp(st.mode.select.exp))))))
                             (initEnv)
                 }
             },
@@ -173,7 +177,7 @@ export function buildBackend<Exp, Zip, Dat, Env>(
             handleAction
         },
         state: makeState({
-            mode: { case: 'cursor', cursor: { zip: List([]), exp: initExp } },
+            mode: { case: 'cursor', cursor: { zips: List([]), exp: initExp } },
             clipboard: undefined,
             history: List([]),
             future: List([])

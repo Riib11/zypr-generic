@@ -23,30 +23,54 @@ export default function frontend<Exp, Zip>
             case 'exp': {
                 if (node.dat.preExp === undefined)
                     throw new Error("impossible")
-                classNames.push("node-exp")
-                if (node.modifier !== undefined)
-                    classNames.push(node.modifier)
                 switch (node.dat.preExp.case) {
-                    case 'var': {
+                    case 'var':
                         return [aux([
                             aux([<span>{node.dat.preExp.dat.label}</span>], ["node-exp-var-label"])
                         ], ["node-exp-var"])]
-                    }
-                    case 'app': {
+                    case 'app':
                         return [aux([
                             <div className="punc punc-paren punc-paren-left">(</div>,
                             aux(renderNode(node.kids[0]), ["node-exp-app-arg"]),
+                            <div className="punc punc-space"> </div>,
                             aux(renderNode(node.kids[1]), ["node-exp-app-apl"]),
                             <div className="punc punc-paren punc-paren-right">)</div>
                         ], ["node-exp-app"])]
-                    }
+
+                    case 'hol':
+                        return [aux([
+                            <span>?</span>
+                        ], ["node-exp-var"])]
                 }
             }
+            case 'cursor-clasp': return [
+                aux(
+                    [aux(renderNode(node.kids[0]), ["node-cursor-clasp-exp"])],
+                    ["node-cursor-clasp"])
+            ]
+            case 'select-clasp-top': return [
+                aux(
+                    [aux(renderNode(node.kids[0]), ["node-select-clasp-top-zip"])],
+                    ["node-select-clasp-top"])
+            ]
+            case 'select-clasp-bot': return [
+                aux(
+                    [aux(renderNode(node.kids[0]), ["node-select-clasp-bot-zip"])],
+                    ["node-select-clasp-bot"])
+            ]
             case 'query-replace': {
                 return [aux([
                     aux(renderNode(node.kids[0]), ["node-query-replace-exp-new"]),
                     aux(renderNode(node.kids[1]), ["node-query-replace-exp-old"]),
                 ], ["node-query-replace"])]
+            }
+            case 'query-insert-top': {
+                return [aux(renderNode(node.kids[0]),
+                    ["node-query-insert-top"])]
+            }
+            case 'query-insert-bot': {
+                return [aux(renderNode(node.kids[0]),
+                    ["node-query-insert-bot"])]
             }
             case 'query-invalid': {
                 return [aux([

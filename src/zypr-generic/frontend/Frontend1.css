@@ -20,6 +20,15 @@
     padding-left: 0.2rem;
 }
 
+.node-query-insert-top {
+    background-color: rgb(255, 197, 89);
+}
+
+.node-query-insert-bot {
+    background-color: white;
+}
+
+
 .node-query-invalid {}
 
 .node-query-invalid-string {}
@@ -56,3 +65,7 @@
 .punc-paren-left {}
 
 .punc-paren-right {}
+
+.punc-space {
+    white-space: pre;
+}

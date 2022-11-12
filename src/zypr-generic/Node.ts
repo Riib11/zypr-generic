@@ -1,34 +1,38 @@
 export type Node<Dat> =
-    {
-        case: 'exp',
-        modifier: NodeVariantExpModifier,
-        dat: Dat,
-        kids: Node<Dat>[]
-    } |
-    {
-        case: 'query-replace',
-        kids: Node<Dat>[]
-    } |
-    {
-        case: 'query-invalid',
-        string: string,
-        kids: Node<Dat>[]
-    }
+    { case: 'exp', dat: Dat, kids: Node<Dat>[] } |
+    { case: SimpleNodeCases, kids: Node<Dat>[] } |
+    { case: 'query-invalid', string: string, kids: Node<Dat>[] }
 
-export type NodeVariantExpModifier
-    = 'cursor-clasp'
-    | 'select-clasp-top' | 'select-clasp-bot'
-    | 'query-replace' | 'query-insert'
-    | undefined
+export type SimpleNodeCases =
+    'cursor-clasp' |
+    'select-clasp-top' | 'select-clasp-bot' |
+    'query-replace' | 'query-insert-top' | 'query-insert-bot'
 
-export function buildExpNode<Dat>(
-    dat: Dat,
-    kids: Node<Dat>[]
-): Node<Dat> {
-    return {
-        case: 'exp',
-        modifier: undefined,
-        dat,
-        kids
-    }
-}
+export const formatCursorClaspAround =
+    <Dat, Env>(kid: (env: Env) => Node<Dat>) =>
+        (env: Env): Node<Dat> => ({ case: 'cursor-clasp', kids: [kid(env)] })
+
+export const formatSelectClaspTopAround =
+    <Dat, Env>(kid: (env: Env) => Node<Dat>) =>
+        (env: Env): Node<Dat> => ({ case: 'select-clasp-top', kids: [kid(env)] })
+
+export const formatSelectClaspBotAround =
+    <Dat, Env>(kid: (env: Env) => Node<Dat>) =>
+        (env: Env): Node<Dat> => ({ case: 'select-clasp-bot', kids: [kid(env)] })
+
+export const formatQueryReplaceAround =
+    <Dat, Env>(kidNew: (env: Env) => Node<Dat>, kidOld: (env: Env) => Node<Dat>) =>
+        (env: Env): Node<Dat> => ({ case: 'query-replace', kids: [kidNew(env), kidOld(env)] })
+
+export const formatQueryInsertTopAround =
+    <Dat, Env>(kid: (env: Env) => Node<Dat>) =>
+        (env: Env): Node<Dat> => ({ case: 'query-insert-top', kids: [kid(env)] })
+
+
+export const formatQueryInsertBotAround =
+    <Dat, Env>(kid: (env: Env) => Node<Dat>) =>
+        (env: Env): Node<Dat> => ({ case: 'query-insert-bot', kids: [kid(env)] })
+
+export const formatQueryInvalidAround =
+    <Dat, Env>(string: string, kid: (env: Env) => Node<Dat>) =>
+        (env: Env): Node<Dat> => ({ case: 'query-invalid', string, kids: [kid(env)] })

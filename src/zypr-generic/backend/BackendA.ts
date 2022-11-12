@@ -1,8 +1,8 @@
 import { List, Record, RecordOf } from "immutable";
 import { EndoPart } from "../../Endo";
 import * as Backend from "../Backend";
-import { Dat, Exp, PreExp, Zip } from "../language/Language1";
-import { buildExpNode, Node } from "../Node";
+import { Dat, Exp, PreExp, wrapZipExp, Zip } from "../language/Language1";
+import { Node } from "../Node";
 
 type Env = RecordOf<{
     indented: boolean
@@ -25,53 +25,81 @@ export default function backend(): Backend.Backend<Exp, Zip, Dat> {
                 if (i == 1) return env.set('indented', true)
                 else return env
             }
+            case 'hol': return env
         }
     }
 
-    const formatPreExp = (preExp: PreExp, env: Env, kids: Node<Dat>[]): Node<Dat> => {
-        return buildExpNode(
-            {
-                preExp,
-                indented: env.indented
-            },
-            kids
-        )
-    }
+    const formatPreExp = (preExp: PreExp, env: Env, kids: Node<Dat>[]): Node<Dat> => ({
+        case: 'exp',
+        dat: {
+            preExp,
+            indented: env.indented
+        },
+        kids
+    })
 
     const formatExp = (exp: Exp) => (env: Env): Node<Dat> => {
         switch (exp.case) {
             case 'var': return formatPreExp(exp, env, [])
-            case 'app':
-                return formatPreExp(
-                    exp,
-                    env,
-                    [exp.apl, exp.arg].map((kid, i) =>
-                        formatExp(kid)(nextEnv(exp, i, env))))
+            case 'app': return formatPreExp(
+                exp,
+                env,
+                [exp.kids[0], exp.kids[1]].map((kid, i) =>
+                    formatExp(kid)(nextEnv(exp, i, env))))
+            case 'hol': return formatPreExp(exp, env, [])
         }
     }
 
-    const formatZip = (zip: List<Zip>) => (node: ((env: Env) => Node<Dat>)): (env: Env) => Node<Dat> => {
-        const step = zip.get(0)
-        if (step === undefined) {
+    const formatZip = (zips: List<Zip>) => (node: ((env: Env) => Node<Dat>)): (env: Env) => Node<Dat> => {
+        const zip = zips.get(0)
+        if (zip === undefined) {
             return node
         } else {
-            return formatZip(zip.shift())((env) =>
-                formatPreExp(step, env,
-                    (step.kidsLeft.reverse().map((kid, i) => formatExp(kid)(nextEnv(step, i, env)))
-                        .concat(List([node(nextEnv(step, step.kidsLeft.size + 1, env))]))
-                        .concat(step.kidsLeft.map((kid, i) => formatExp(kid)(nextEnv(step, i, env))))
-                    ).toArray()
-                )
-            )
+            return formatZip(zips.shift())((env) => {
+                const kidsLeft = zip.kidsLeft.reverse().map((kid, i) => formatExp(kid)(nextEnv(zip, i, env))).toArray()
+                const kidCenter = node(nextEnv(zip, zip.kidsLeft.size + 1, env))
+                const kidsRight = zip.kidsRight.map((kid, i) => formatExp(kid)(nextEnv(zip, i, env))).toArray()
+                const kids: Node<Dat>[] = ([] as Node<Dat>[]).concat(kidsLeft, [kidCenter], kidsRight)
+                return formatPreExp(zip, env, kids)
+            })
         }
     }
 
     function interpQuery(st: Backend.State<Exp, Zip, Dat>,
         str: string
     ): Backend.Action<Exp, Zip>[] {
-        return [
-            { case: 'replace', exp: { case: 'var', dat: { label: str } } }
-        ]
+        if (str === " ") {
+            const acts: Backend.Action<Exp, Zip>[] = [
+                {
+                    case: 'insert',
+                    zips: List<Zip>([{
+                        case: 'app',
+                        dat: { 'indentedArg': false },
+                        kidsLeft: List([]),
+                        kidsRight: List([{ case: 'hol', dat: {}, kids: [] }])
+                    }])
+                },
+                {
+                    case: 'insert',
+                    zips: List<Zip>([{
+                        case: 'app',
+                        dat: { 'indentedArg': false },
+                        kidsLeft: List([{ case: 'hol', dat: {}, kids: [] }]),
+                        kidsRight: List([])
+                    }])
+                }
+            ]
+            return acts
+        } else {
+            const acts: Backend.Action<Exp, Zip>[] = [
+                {
+                    case: 'replace',
+                    exp: { case: 'var', dat: { label: str }, kids: [] }
+                }
+            ]
+            return acts
+        }
+
     }
 
     function handleAction(
@@ -84,7 +112,7 @@ export default function backend(): Backend.Backend<Exp, Zip, Dat> {
                         case 'cursor': return {
                             case: 'cursor',
                             cursor: {
-                                zip: mode.cursor.zip,
+                                zips: mode.cursor.zips,
                                 exp: act.exp
                             }
                         }
@@ -93,20 +121,20 @@ export default function backend(): Backend.Backend<Exp, Zip, Dat> {
                 })
             }
             case 'insert': {
-                return Backend.updateMode(mode => {
+                return Backend.updateMode((mode): Backend.Mode<Exp, Zip> => {
                     switch (mode.case) {
                         case 'cursor': return {
                             case: 'cursor',
                             cursor: {
-                                zip: mode.cursor.zip.concat(act.zip), // TODO: correct order of concat?
-                                exp: mode.cursor.exp
+                                zips: act.zips.concat(mode.cursor.zips),
+                                exp: mode.cursor.exp // wrapZipExp(act.zips, mode.cursor.exp)
                             }
                         }
                         case 'select': return {
                             case: 'select',
                             select: {
-                                zip_top: mode.select.zip_top,
-                                zip_bot: act.zip, // TODO: fix via orient
+                                zipsTop: mode.select.zipsTop,
+                                zipsBot: Backend.toZipBot(mode.select, act.zips),
                                 orient: mode.select.orient,
                                 exp: mode.select.exp,
                             }
@@ -118,10 +146,7 @@ export default function backend(): Backend.Backend<Exp, Zip, Dat> {
         }
     }
 
-    const initExp: Exp = {
-        case: 'var',
-        dat: { label: "x" }
-    }
+    const initExp: Exp = { case: 'var', dat: { label: "x" }, kids: [] }
 
     return Backend.buildBackend<Exp, Zip, Dat, Env>(
         initEnv,

@@ -24,7 +24,6 @@ export default class Editor<Exp, Zip, Dat>
     constructor(
         props: Props<Exp, Zip, Dat>,
     ) {
-        console.log("Editor.constructor")
         super(props)
         this.state = props.initState
     }
@@ -81,38 +80,37 @@ export function renderEditor<Exp, Zip, Dat>(
         }
 
         function handleKeyboard(editor: Editor<Exp, Zip, Dat>, event: KeyboardEvent): void {
-            let act: Backend.Action<Exp, Zip> | undefined;
-            const isQueryless = editor.state.query.str.length === 0
 
-            if (event.key === 'ArrowLeft') {
-                act = { case: 'move', dir: 'left' }
-            } else if (event.key === 'ArrowRight') {
-                act = { case: 'move', dir: 'right' }
-            } else if (event.key === 'ArrowUp' && isQueryless) {
-                act = { case: 'move', dir: 'up' }
-            } else if (event.key === 'ArrowDown' && isQueryless) {
-                act = { case: 'move', dir: 'down' }
-            } else if (event.key === 'Enter') {
-                act = Backend.interpQueryAction(
-                    editor.props.backend,
-                    editor.state.backend,
-                    editor.state.query
-                ) ?? act
-            } else {
-                const query = interactQuery(event, editor.state.query)
-                if (query !== undefined) {
-                    const acts = editor.props.backend.interpQueryString
-                        (editor.state.backend, query.str)
-                    act = acts[query.i % acts.length]
-                }
-                if (query !== undefined)
-                    editor.setState({ ...editor.state, query })
+            // try to interact with query
+            const query = interactQuery(event, editor.state.query)
+            if (query !== undefined) {
+                const acts = editor.props.backend.interpQueryString
+                    (editor.state.backend, query.str)
+                editor.setState({ ...editor.state, query })
                 return
-            }
+            } else {
+                const isQueryless = editor.state.query.str.length === 0
+                let act: Backend.Action<Exp, Zip> | undefined;
 
-            if (act !== undefined)
-                modifyBackendState(editor,
-                    editor.props.backend.handleAction(act))
+                if (event.key === 'ArrowLeft') {
+                    act = { case: 'move', dir: 'left' }
+                } else if (event.key === 'ArrowRight') {
+                    act = { case: 'move', dir: 'right' }
+                } else if (event.key === 'ArrowUp' && isQueryless) {
+                    act = { case: 'move', dir: 'up' }
+                } else if (event.key === 'ArrowDown' && isQueryless) {
+                    act = { case: 'move', dir: 'down' }
+                } else if (event.key === 'Enter') {
+                    act = Backend.interpQueryAction(
+                        editor.props.backend,
+                        editor.state.backend,
+                        editor.state.query
+                    ) ?? act
+                }
+                if (act !== undefined)
+                    modifyBackendState(editor,
+                        editor.props.backend.handleAction(act))
+            }
         }
 
         const initState: State<Exp, Zip, Dat> = {
@@ -130,9 +128,3 @@ export function renderEditor<Exp, Zip, Dat>(
         ]
     }
 }
-/*
-{
-    backend: Backend.State<Exp, Zip, Dat>,
-    query: Query
-}
-*/
