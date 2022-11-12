@@ -1,7 +1,7 @@
 import { List, Record, RecordOf } from "immutable";
 import { EndoPart } from "../../Endo";
 import * as Backend from "../Backend";
-import { Dat, Exp, PreExp, Step, Zip } from "../language/Language1";
+import { Dat, Exp, PreExp, Zip } from "../language/Language1";
 import { buildExpNode, Node } from "../Node";
 
 type Env = RecordOf<{
@@ -50,7 +50,7 @@ export default function backend(): Backend.Backend<Exp, Zip, Dat> {
         }
     }
 
-    const formatZip = (zip: Zip) => (node: ((env: Env) => Node<Dat>)): (env: Env) => Node<Dat> => {
+    const formatZip = (zip: List<Zip>) => (node: ((env: Env) => Node<Dat>)): (env: Env) => Node<Dat> => {
         const step = zip.get(0)
         if (step === undefined) {
             return node
@@ -123,7 +123,7 @@ export default function backend(): Backend.Backend<Exp, Zip, Dat> {
         dat: { label: "x" }
     }
 
-    return Backend.buildBackend<Exp, Step, Dat, Env>(
+    return Backend.buildBackend<Exp, Zip, Dat, Env>(
         initEnv,
         formatExp,
         formatZip,

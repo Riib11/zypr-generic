@@ -42,7 +42,7 @@ export type Action<Exp, Zip>
     = { case: 'move', dir: Direction }
     | { case: 'set_cursor', cursor: Cursor<Exp, Zip> }
     | { case: 'replace', exp: Exp }
-    | { case: 'insert', zip: Zip }
+    | { case: 'insert', zip: List<Zip> }
     | { case: BasicAction }
 export type BasicAction = 'undo' | 'redo' | 'copy' | 'paste' | 'delete' | 'move'
 
@@ -59,13 +59,13 @@ export type Mode<Exp, Zip>
     = { case: 'cursor', cursor: Cursor<Exp, Zip> }
     | { case: 'select', select: Select<Exp, Zip> }
 
-export type Cursor<Exp, Zip> = { zip: Zip, exp: Exp }
+export type Cursor<Exp, Zip> = { zip: List<Zip>, exp: Exp }
 
-export type Select<Exp, Zip> = { zip_top: Zip, zip_bot: Zip, exp: Exp, orient: Orient }
+export type Select<Exp, Zip> = { zip_top: List<Zip>, zip_bot: List<Zip>, exp: Exp, orient: Orient }
 
 export type Clipboard<Exp, Zip>
     = { case: 'exp', exp: Exp }
-    | { case: 'zip', zip: Zip }
+    | { case: 'zip', zip: List<Zip> }
     | undefined
 
 // up: the top of the select can move
@@ -103,17 +103,17 @@ export function redo<Exp, Zip, Dat>(): EndoPart<State<Exp, Zip, Dat>> {
 
 // buildBackend
 
-export function buildBackend<Exp, Step, Dat, Env>(
+export function buildBackend<Exp, Zip, Dat, Env>(
     // formatting
     initEnv: Env,
     formatExp: (exp: Exp, modifier: NodeVariantExpModifier) => (env: Env) => Node<Dat>,
-    formatZip: (zip: List<Step>, modifier: NodeVariantExpModifier) => (kid: (env: Env) => Node<Dat>) => (env: Env) => Node<Dat>,
+    formatZip: (zip: List<Zip>, modifier: NodeVariantExpModifier) => (kid: (env: Env) => Node<Dat>) => (env: Env) => Node<Dat>,
     // actions
-    interpQueryString: (st: State<Exp, List<Step>, Dat>, str: string) => Action<Exp, List<Step>>[],
-    handleAction: (act: Action<Exp, List<Step>>) => EndoPart<State<Exp, List<Step>, Dat>>,
+    interpQueryString: (st: State<Exp, Zip, Dat>, str: string) => Action<Exp, Zip>[],
+    handleAction: (act: Action<Exp, Zip>) => EndoPart<State<Exp, Zip, Dat>>,
     // program
     initExp: Exp,
-): Backend<Exp, List<Step>, Dat> {
+): Backend<Exp, Zip, Dat> {
     return {
         props: {
             format: (st, query) => {
