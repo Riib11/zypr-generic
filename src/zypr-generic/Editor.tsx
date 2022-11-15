@@ -80,6 +80,7 @@ export function renderEditor<Exp, Zip, Dat>(
         }
 
         function handleKeyboard(editor: Editor<Exp, Zip, Dat>, event: KeyboardEvent): void {
+            console.log(event.key)
 
             // try to interact with query
             const query = interactQuery(event, editor.state.query)
@@ -90,23 +91,33 @@ export function renderEditor<Exp, Zip, Dat>(
                 event.preventDefault()
                 return
             } else {
+                // if that doesn't work, then non-query-interaction action
+
                 const isQueryless = editor.state.query.str.length === 0
                 let act: Backend.Action<Exp, Zip> | undefined;
 
                 if (event.key === 'ArrowLeft') {
-                    act = { case: 'move', dir: 'left' }
+                    act = { case: event.shiftKey ? 'move_select' : 'move_cursor', dir: 'left' }
                 } else if (event.key === 'ArrowRight') {
-                    act = { case: 'move', dir: 'right' }
+                    act = { case: event.shiftKey ? 'move_select' : 'move_cursor', dir: 'right' }
                 } else if (event.key === 'ArrowUp' && isQueryless) {
-                    act = { case: 'move', dir: 'up' }
+                    act = { case: event.shiftKey ? 'move_select' : 'move_cursor', dir: 'up' }
                 } else if (event.key === 'ArrowDown' && isQueryless) {
-                    act = { case: 'move', dir: 'down' }
+                    act = { case: event.shiftKey ? 'move_select' : 'move_cursor', dir: 'down' }
                 } else if (event.key === 'Enter') {
                     act = Backend.interpQueryAction(
                         editor.props.backend,
                         editor.state.backend,
                         editor.state.query
                     ) ?? act
+                } else if (event.key === 'Escape') {
+                    act = { case: 'escape' }
+                } else if (event.key === 'Backspace') {
+                    act = { case: 'delete' }
+                } else if (event.ctrlKey || event.metaKey) {
+                    if (event.key === 'c') act = { case: 'copy' }
+                    else if (event.key === 'x') act = { case: 'cut' }
+                    else if (event.key === 'v') act = { case: 'paste' }
                 }
                 if (act !== undefined) {
                     event.preventDefault()

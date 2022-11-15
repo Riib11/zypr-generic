@@ -39,12 +39,13 @@ export function handleQueryAction<Exp, Zip, Dat>(
 }
 
 export type Action<Exp, Zip>
-    = { case: 'move', dir: Direction }
+    = { case: 'move_cursor', dir: Direction }
+    | { case: 'move_select', dir: Direction }
     | { case: 'set_cursor', cursor: Cursor<Exp, Zip> }
     | { case: 'replace', exp: Exp }
     | { case: 'insert', zips: List<Zip> }
     | { case: BasicAction }
-export type BasicAction = 'undo' | 'redo' | 'copy' | 'cut' | 'paste'
+export type BasicAction = 'undo' | 'redo' | 'copy' | 'cut' | 'paste' | 'delete' | 'escape'
 
 export type State<Exp, Zip, Dat> = RecordOf<State_<Exp, Zip, Dat>>
 export const makeState = <Exp, Zip, Dat>(state_: State_<Exp, Zip, Dat>): State<Exp, Zip, Dat> => Record<State_<Exp, Zip, Dat>>(state_)()
@@ -68,11 +69,23 @@ export type Clipboard<Exp, Zip>
     | { case: 'zips', zips: List<Zip> }
     | undefined
 
-// up: the top of the select can move
-// down: the bot of the select can move
-export type Orient = 'up' | 'down'
+// top: the top of the select can move
+// bot: the bot of the select can move
+export type Orient = 'top' | 'bot'
+
+export type Childing<Zip> = Zip | undefined
 
 // updateState
+
+export function updateState<Exp, Zip, Dat>(f: EndoPart<State<Exp, Zip, Dat>>): EndoPart<State<Exp, Zip, Dat>> {
+    return (st) => {
+        const st_ = f(st)
+        if (st_ === undefined) return undefined
+        return st_
+            .update('history', (hist) => hist.unshift(st))
+            .set('future', List([]))
+    }
+}
 
 export function updateMode<Exp, Zip, Dat>(f: EndoPart<Mode<Exp, Zip>>): EndoPart<State<Exp, Zip, Dat>> {
     return (st) => {
@@ -99,17 +112,66 @@ export function redo<Exp, Zip, Dat>(): EndoPart<State<Exp, Zip, Dat>> {
     }
 }
 
-export function fromZipBot<Exp, Zip>(select: Select<Exp, Zip>) {
+export function cut<Exp, Zip, Dat>(hol: Exp): EndoPart<State<Exp, Zip, Dat>> {
+    return updateState((st): State<Exp, Zip, Dat> | undefined => {
+        switch (st.mode.case) {
+            case 'cursor': return st
+                .set('mode', { case: 'cursor', cursor: { zips: st.mode.cursor.zips, exp: hol } })
+                .set('clipboard', { case: 'exp', exp: st.mode.cursor.exp })
+
+            case 'select': return st
+                .set('mode', { case: 'cursor', cursor: { zips: st.mode.select.zipsTop, exp: st.mode.select.exp } })
+                .set('clipboard', { case: 'zips', zips: getZipsBot(st.mode.select) })
+        }
+    })
+}
+
+export function copy<Exp, Zip, Dat>(): EndoPart<State<Exp, Zip, Dat>> {
+    return updateState((st): State<Exp, Zip, Dat> | undefined => {
+        switch (st.mode.case) {
+            case 'cursor': return st
+                .set('clipboard', { case: 'exp', exp: st.mode.cursor.exp })
+
+            case 'select': return st
+                .set('clipboard', { case: 'zips', zips: getZipsBot(st.mode.select) })
+        }
+    })
+}
+
+export function paste<Exp, Zip, Dat>(): EndoPart<State<Exp, Zip, Dat>> {
+    return updateState((st): State<Exp, Zip, Dat> | undefined => {
+        if (st.clipboard === undefined) return undefined
+        switch (st.clipboard.case) {
+            case 'exp': {
+                switch (st.mode.case) {
+                    case 'cursor': return st
+                        .set('mode', { case: 'cursor', cursor: { zips: st.mode.cursor.zips, exp: st.clipboard.exp } })
+                    case 'select': return undefined
+                }
+            }
+            case 'zips': {
+                switch (st.mode.case) {
+                    case 'cursor': return st
+                        .set('mode', { case: 'cursor', cursor: { zips: st.mode.cursor.zips.concat(st.clipboard.zips), exp: st.mode.cursor.exp } })
+                    case 'select': return st
+                        .set('mode', { case: 'cursor', cursor: { zips: st.mode.select.zipsTop.concat(st.clipboard.zips), exp: st.mode.select.exp } })
+                }
+            }
+        }
+    })
+}
+
+export function getZipsBot<Exp, Zip>(select: Select<Exp, Zip>) {
     switch (select.orient) {
-        case 'up': return select.zipsBot.reverse()
-        case 'down': return select.zipsBot
+        case 'top': return select.zipsBot.reverse()
+        case 'bot': return select.zipsBot
     }
 }
 
-export function toZipBot<Exp, Zip>(select: Select<Exp, Zip>, zips: List<Zip>) {
+export function setZipsBot<Exp, Zip>(select: Select<Exp, Zip>, zips: List<Zip>) {
     switch (select.orient) {
-        case 'up': return zips.reverse()
-        case 'down': return zips
+        case 'top': return { ...select, zipsBot: zips.reverse() }
+        case 'bot': return { ...select, zipsBot: zips }
     }
 }
 
@@ -118,8 +180,8 @@ export function toZipBot<Exp, Zip>(select: Select<Exp, Zip>, zips: List<Zip>) {
 export function buildBackend<Exp, Zip, Dat, Env>(
     // formatting
     initEnv: Env,
-    formatExp: (exp: Exp) => (env: Env) => Node<Dat>,
-    formatZip: (zips: List<Zip>) => (kid: (env: Env) => Node<Dat>) => (env: Env) => Node<Dat>,
+    formatExp: (exp: Exp, childing: Childing<Zip>) => (env: Env) => Node<Dat>,
+    formatZip: (zips: List<Zip>, childing: Childing<Zip>) => (kid: (env: Env) => Node<Dat>) => (env: Env) => Node<Dat>,
     // actions
     interpQueryString: (st: State<Exp, Zip, Dat>, str: string) => Action<Exp, Zip>[],
     handleAction: (act: Action<Exp, Zip>) => EndoPart<State<Exp, Zip, Dat>>,
@@ -129,7 +191,7 @@ export function buildBackend<Exp, Zip, Dat, Env>(
     return {
         props: {
             format: (st, query) => {
-                function formatQueryAround(kid: (env: Env) => Node<Dat>): (env: Env) => Node<Dat> {
+                function formatQueryAround(kid: (env: Env) => Node<Dat>, childing: Childing<Zip>): (env: Env) => Node<Dat> {
                     if (query.str.length > 0) {
                         const acts = interpQueryString(st, query.str)
                         if (acts.length === 0) {
@@ -139,11 +201,12 @@ export function buildBackend<Exp, Zip, Dat, Env>(
                             switch (act.case) {
                                 case 'replace':
                                     return formatQueryReplaceAround(
-                                        formatExp(act.exp),
+                                        formatExp(act.exp, childing),
                                         kid)
                                 case 'insert':
+                                    console.log("formatQueryAround insert childing", childing)
                                     return formatQueryInsertTopAround(
-                                        formatZip(act.zips)(
+                                        formatZip(act.zips, childing)(
                                             formatQueryInsertBotAround(kid)))
                                 default:
                                     // TODO: special display for other kinds of actions?
@@ -157,19 +220,22 @@ export function buildBackend<Exp, Zip, Dat, Env>(
 
                 switch (st.mode.case) {
                     case 'cursor': {
-                        return formatZip(st.mode.cursor.zips)
+                        console.log("formatNode cursor childing", st.mode.cursor.zips.get(0))
+                        return formatZip(st.mode.cursor.zips, undefined)
                             (formatQueryAround(
                                 formatCursorClaspAround(
-                                    formatExp(st.mode.cursor.exp))))
+                                    formatExp(st.mode.cursor.exp, st.mode.cursor.zips.get(0))),
+                                st.mode.cursor.zips.get(0)))
                             (initEnv)
                     }
                     case 'select':
-                        return formatZip(st.mode.select.zipsTop)
+                        return formatZip(st.mode.select.zipsTop, undefined)
                             (formatQueryAround(
                                 formatSelectClaspTopAround(
-                                    formatZip(st.mode.select.zipsBot)(
+                                    formatZip(st.mode.select.zipsBot, st.mode.select.zipsTop.get(0))(
                                         formatSelectClaspBotAround(
-                                            formatExp(st.mode.select.exp))))))
+                                            formatExp(st.mode.select.exp, getZipsBot(st.mode.select).get(0))))),
+                                st.mode.select.zipsTop.get(0)))
                             (initEnv)
                 }
             },
@@ -184,3 +250,4 @@ export function buildBackend<Exp, Zip, Dat, Env>(
         })
     }
 }
+

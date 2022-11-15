@@ -1,5 +1,5 @@
 import * as Backend from "../Backend";
-import Editor, { renderEditor, State } from "../Editor";
+import { renderEditor } from "../Editor";
 import { Dat } from '../language/Language1'
 import { Node } from "../Node";
 
@@ -17,10 +17,27 @@ export default function frontend<Exp, Zip>
         let classNames = ["node"]
         function aux(es: JSX.Element[], extraClassNames?: string[]): JSX.Element {
             const classNames_ = classNames.concat(extraClassNames ?? [])
-            return <div className={classNames_.join(" ")}>{es}</div>
+            return (
+                <div
+                    // onMouseEnter={(event) => event.target.}
+                    className={classNames_.join(" ")}>
+                    {es}
+                </div>)
         }
         switch (node.case) {
             case 'exp': {
+                const paren = (es: JSX.Element[]): JSX.Element[] => {
+                    if (node.dat.isParenthesized) {
+                        return (
+                            [<div className="punc punc-paren punc-paren-left">(</div>]
+                                .concat(es)
+                                .concat(<div className="punc punc-paren punc-paren-right">)</div>)
+                        )
+                    } else {
+                        return es
+                    }
+                }
+
                 if (node.dat.preExp === undefined)
                     throw new Error("impossible")
                 switch (node.dat.preExp.case) {
@@ -29,14 +46,11 @@ export default function frontend<Exp, Zip>
                             aux([<span>{node.dat.preExp.dat.label}</span>], ["node-exp-var-label"])
                         ], ["node-exp-var"])]
                     case 'app':
-                        return [aux([
-                            <div className="punc punc-paren punc-paren-left">(</div>,
+                        return [aux(paren([
                             aux(renderNode(node.kids[0]), ["node-exp-app-arg"]),
                             <div className="punc punc-space"> </div>,
-                            aux(renderNode(node.kids[1]), ["node-exp-app-apl"]),
-                            <div className="punc punc-paren punc-paren-right">)</div>
-                        ], ["node-exp-app"])]
-
+                            aux(renderNode(node.kids[1]), ["node-exp-app-apl"])
+                        ]), ["node-exp-app"])]
                     case 'hol':
                         return [aux([<span>?</span>], ["node-exp-var"])]
                 }

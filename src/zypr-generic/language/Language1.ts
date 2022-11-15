@@ -1,4 +1,5 @@
 import { List, RecordOf } from "immutable"
+import { Cursor, Mode, Select } from "../Backend"
 import { Direction } from "../Direction"
 
 // PreExp
@@ -15,6 +16,10 @@ export type Exp
     | PreExpApp & { kids: [Exp, Exp] }
     | PreExpHol & { kids: [] }
 
+export const mkVar = (label: string): Exp => ({ case: 'var', dat: { label }, kids: [] })
+export const mkApp = (apl: Exp, arg: Exp, indentedArg?: boolean) => ({ case: 'app', dat: { indentedArg: indentedArg ?? false }, kids: [apl, arg] })
+export const mkHol = (): Exp => ({ case: 'hol', dat: {}, kids: [] })
+
 // Zip
 // Zip <: PreExp
 export type Zip = PreExp & {
@@ -25,12 +30,218 @@ export type Zip = PreExp & {
 // Dat
 export type Dat = {
     preExp: PreExp | undefined,
+    isParenthesized: boolean,
+    isApp: boolean,
     indented: boolean
 }
+
+// 
+
+export function unzipExp(zip: Zip, exp: Exp): Exp {
+    return {
+        case: zip.case,
+        dat: zip.dat,
+        kids: ([] as Exp[]).concat(zip.kidsLeft.reverse().toArray(), [exp], zip.kidsRight.toArray())
+    } as Exp
+}
+
+export function zipExp(exp: Exp, i: number): Zip {
+    return {
+        case: exp.case,
+        dat: exp.dat,
+        kidsLeft: List(exp.kids.slice(undefined, i)),
+        kidsRight: List(exp.kids.slice(i + 1, undefined))
+    } as Zip
+}
+
+// move
+
+export function moveCursor(
+    dir: Direction,
+    cursor: Cursor<Exp, Zip>
+): Cursor<Exp, Zip> | undefined {
+    switch (dir) {
+        case 'up': {
+            const zip = cursor.zips.get(0)
+            if (zip === undefined) return undefined
+            return { zips: cursor.zips.shift(), exp: zipUp(zip, cursor.exp) }
+        }
+        case 'down': {
+            const treeExp = toTreeExp(cursor.exp)
+            const treeExpKid = treeExp.kids.at(0)
+            if (treeExpKid === undefined) return undefined
+            return {
+                zips: cursor.zips.unshift(fromTreeZip({
+                    case: treeExp.case,
+                    dat: treeExp.dat,
+                    kidsLeft: List([]),
+                    kidsRight: List(treeExp.kids).shift()
+                })),
+                exp: fromTreeExp(treeExpKid)
+            }
+        }
+        case 'left': {
+            const zip = cursor.zips.get(0)
+            if (zip === undefined) return undefined
+            const tzip = toTreeZip(zip)
+            const texp = tzip.kidsLeft.get(0)
+            if (texp === undefined) return undefined
+            const tzipNew: TreeZip = {
+                case: tzip.case,
+                dat: tzip.dat,
+                kidsLeft: tzip.kidsLeft.shift(),
+                kidsRight: tzip.kidsRight.unshift(cursor.exp)
+            }
+            return {
+                zips: cursor.zips.shift().unshift(fromTreeZip(tzipNew)),
+                exp: fromTreeExp(texp)
+            }
+        }
+        case 'right': {
+            const zip = cursor.zips.get(0)
+            if (zip === undefined) return undefined
+            const tzip = toTreeZip(zip)
+            const texp = tzip.kidsRight.get(0)
+            if (texp === undefined) return undefined
+            const tzipNew: TreeZip = {
+                case: tzip.case,
+                dat: tzip.dat,
+                kidsLeft: tzip.kidsLeft.unshift(cursor.exp),
+                kidsRight: tzip.kidsRight.shift()
+            }
+            return {
+                zips: cursor.zips.shift().unshift(fromTreeZip(tzipNew)),
+                exp: fromTreeExp(texp)
+            }
+        }
+    }
+}
+
+export function moveSelect(
+    dir: Direction,
+    select: Select<Exp, Zip>
+): Select<Exp, Zip> | undefined {
+    switch (dir) {
+        case 'up': {
+            switch (select.orient) {
+                case 'top': {
+                    const zip = select.zipsTop.get(0)
+                    if (zip === undefined) return undefined
+                    return {
+                        zipsTop: select.zipsTop.shift(),
+                        zipsBot: select.zipsBot.concat(zip),
+                        exp: select.exp,
+                        orient: select.orient
+                    }
+                }
+                case 'bot': {
+                    const zip = select.zipsBot.get(0)
+                    if (zip === undefined) return undefined
+                    return {
+                        zipsTop: select.zipsTop,
+                        zipsBot: select.zipsBot.shift(),
+                        exp: zipUp(zip, select.exp),
+                        orient: select.orient
+                    }
+                }
+            }
+        }
+        case 'down': {
+            switch (select.orient) {
+                case 'top': {
+                    const zip = select.zipsBot.get(0)
+                    if (zip === undefined) return undefined
+                    return {
+                        zipsTop: select.zipsTop.unshift(zip),
+                        zipsBot: select.zipsBot.shift(),
+                        exp: select.exp,
+                        orient: select.orient
+                    }
+                }
+                case 'bot': {
+                    const treeExp = toTreeExp(select.exp)
+                    const treeExpKid = treeExp.kids.at(0)
+                    if (treeExpKid === undefined) return undefined
+                    return {
+                        zipsTop: select.zipsTop,
+                        zipsBot: select.zipsBot.unshift(fromTreeZip({
+                            case: treeExp.case,
+                            dat: treeExp.dat,
+                            kidsLeft: List([]),
+                            kidsRight: List(treeExp.kids).shift()
+                        })),
+                        exp: fromTreeExp(treeExpKid),
+                        orient: select.orient
+                    }
+                }
+            }
+        }
+        case 'left': {
+            switch (select.orient) {
+                case 'top': return undefined
+                case 'bot': {
+                    const zip = select.zipsBot.get(0)
+                    if (zip === undefined) return undefined
+                    const tzip = toTreeZip(zip)
+                    const texp = tzip.kidsLeft.get(0)
+                    if (texp === undefined) return undefined
+                    const tzipNew: TreeZip = {
+                        case: tzip.case,
+                        dat: tzip.dat,
+                        kidsLeft: tzip.kidsLeft.shift(),
+                        kidsRight: tzip.kidsRight.unshift(select.exp)
+                    }
+                    return {
+                        zipsTop: select.zipsTop,
+                        zipsBot: select.zipsBot.shift().unshift(fromTreeZip(tzipNew)),
+                        exp: fromTreeExp(texp),
+                        orient: select.orient
+                    }
+                }
+            }
+        }
+        case 'right': {
+            switch (select.orient) {
+                case 'top': return undefined
+                case 'bot': {
+                    const zip = select.zipsBot.get(0)
+                    if (zip === undefined) return undefined
+                    const tzip = toTreeZip(zip)
+                    const texp = tzip.kidsRight.get(0)
+                    if (texp === undefined) return undefined
+                    const tzipNew: TreeZip = {
+                        case: tzip.case,
+                        dat: tzip.dat,
+                        kidsLeft: tzip.kidsLeft.unshift(select.exp),
+                        kidsRight: tzip.kidsRight.shift(),
+                    }
+                    return {
+                        zipsTop: select.zipsTop,
+                        zipsBot: select.zipsBot.shift().unshift(fromTreeZip(tzipNew)),
+                        exp: fromTreeExp(texp),
+                        orient: select.orient
+                    }
+                }
+            }
+        }
+    }
+}
+
+export function fixSelect(select: Select<Exp, Zip>): Mode<Exp, Zip> {
+    if (select.zipsBot.isEmpty())
+        return { case: 'cursor', cursor: { zips: select.zipsTop, exp: select.exp } }
+    else
+        return { case: 'select', select }
+}
+
 
 // TreePreExp
 
 export type TreePreExp = { case: PreExp['case'], dat: PreExp['dat'] }
+
+export const toTreePreExp = <PE extends PreExp>(pex: PE): TreePreExp => pex
+
+export const fromTreePreExp = <PE extends PreExp>(treePex: TreePreExp): PE => treePex as PE
 
 // TreeExp
 export type TreeExp = TreePreExp & { kids: TreeExp[] }
@@ -50,101 +261,6 @@ export const toTreeZip = (zip: Zip): TreeZip => zip
 
 export const fromTreeZip = (treeZip: TreeZip): Zip => treeZip as Zip
 
-// move
-
-export function move(dir: Direction, zips: List<Zip>, exp: Exp): { zips: List<Zip>, exp: Exp } | undefined {
-    switch (dir) {
-        case 'up': {
-            const zip = zips.get(0)
-            if (zip === undefined) return undefined
-            else return { zips: zips.shift(), exp: zipUp(zip, exp) }
-        }
-        case 'down': {
-            const treeExp = toTreeExp(exp)
-            const treeExpKid = treeExp.kids.at(0)
-            if (treeExpKid === undefined) return undefined
-            else return {
-                zips: zips.unshift(fromTreeZip({
-                    case: treeExp.case,
-                    dat: treeExp.dat,
-                    kidsLeft: List([]),
-                    kidsRight: List(treeExp.kids).shift()
-                })),
-                exp: fromTreeExp(treeExpKid)
-            }
-        }
-        case 'left': {
-            const zip = zips.get(0)
-            if (zip === undefined) return undefined
-            else {
-                const res = zipLeft(zip, exp)
-                if (res === undefined) return undefined
-                return {
-                    zips: zips.shift().unshift(res.zip),
-                    exp: res.exp
-                }
-            }
-        }
-        case 'right': {
-            const zip = zips.get(0)
-            if (zip === undefined) return undefined
-            else {
-                const res = zipRight(zip, exp)
-                if (res === undefined) return undefined
-                return {
-                    zips: zips.shift().unshift(res.zip),
-                    exp: res.exp
-                }
-            }
-        }
-    }
-}
-
-// zipLeft
-
-export const zipLeft = (zip: Zip, exp: Exp): { zip: Zip, exp: Exp } | undefined => {
-    const res = zipLeftTree(toTreeZip(zip), toTreeExp(exp))
-    if (res === undefined) return undefined
-    else return { zip: fromTreeZip(res.treeZip), exp: fromTreeExp(res.treeExp) }
-}
-
-export const zipLeftTree =
-    (treeZip: TreeZip, treeExp: TreeExp): { treeZip: TreeZip, treeExp: TreeExp } | undefined => {
-        const treeExpNew = treeZip.kidsLeft.get(0)
-        if (treeExpNew === undefined) return undefined
-        else return {
-            treeZip: {
-                case: treeZip.case,
-                dat: treeZip.dat,
-                kidsLeft: treeZip.kidsLeft.shift(),
-                kidsRight: treeZip.kidsRight.unshift(treeExp)
-            },
-            treeExp: treeExpNew
-        }
-    }
-
-// zipRight
-
-export const zipRight = (zip: Zip, exp: Exp): { zip: Zip, exp: Exp } | undefined => {
-    const res = zipRightTree(toTreeZip(zip), toTreeExp(exp))
-    if (res === undefined) return undefined
-    else return { zip: fromTreeZip(res.treeZip), exp: fromTreeExp(res.treeExp) }
-}
-
-export const zipRightTree =
-    (treeZip: TreeZip, treeExp: TreeExp): { treeZip: TreeZip, treeExp: TreeExp } | undefined => {
-        const treeExpNew = treeZip.kidsRight.get(0)
-        if (treeExpNew === undefined) return undefined
-        else return {
-            treeZip: {
-                case: treeZip.case,
-                dat: treeZip.dat,
-                kidsLeft: treeZip.kidsLeft.unshift(treeExp),
-                kidsRight: treeZip.kidsRight.shift()
-            },
-            treeExp: treeExpNew
-        }
-    }
 
 // zipUp
 

@@ -1,1 +1,2 @@
-export type Direction = 'up' | 'down' | 'left' | 'right' | 'prev' | 'next'
+export type Direction = 'up' | 'down' | 'left' | 'right'
+// | 'prev' | 'next'

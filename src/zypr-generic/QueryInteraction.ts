@@ -14,11 +14,14 @@ export default function interactQuery(
         event.preventDefault()
         return { str: query.str, i: query.i + 1 }
     }
-    else if (event.key === 'Escape') {
+    else if (event.key === 'Escape' && !isQueryless) {
         event.preventDefault()
         return { str: "", i: 0 }
-    }
-    else {
+    } else if (event.key === 'Escape' && isQueryless) {
+        return undefined
+    } else if (event.key === 'Backspace' && isQueryless) {
+        return undefined
+    } else {
         const str = interactString(event, query.str)
         if (str === undefined) return undefined
         event.preventDefault()
