@@ -2,7 +2,7 @@ import { List, Record, RecordOf } from 'immutable'
 import { EndoPart } from '../Endo'
 import { Direction } from './Direction'
 import { Query } from './Editor'
-import { formatCursorClaspAround, formatQueryInsertBotAround, formatQueryInsertTopAround, formatQueryInvalidAround, formatQueryReplaceAround, formatSelectClaspBotAround, formatSelectClaspTopAround, Node } from './Node'
+import { ExpNode, formatWrapperNodeAround, Node } from './Node'
 
 // Env: render environment
 // Dat: render data
@@ -13,6 +13,8 @@ export type Backend<Exp, Zip, Dat> = {
 }
 
 export type Props<Exp, Zip, Dat> = {
+    zipExp: (exp: Exp, i: number) => Zip,
+    unzipExp: (zip: Zip, exp: Exp) => Exp,
     format: (st: State<Exp, Zip, Dat>, query: Query) => Node<Dat>,
     interpQueryString: (st: State<Exp, Zip, Dat>, str: string) => Action<Exp, Zip>[],
     handleAction: (act: Action<Exp, Zip>) => EndoPart<State<Exp, Zip, Dat>>
@@ -178,10 +180,13 @@ export function setZipsBot<Exp, Zip>(select: Select<Exp, Zip>, zips: List<Zip>) 
 // buildBackend
 
 export function buildBackend<Exp, Zip, Dat, Env>(
+    // zip/unzip
+    zipExp: (exp: Exp, i: number) => Zip,
+    unzipExp: (zip: Zip, exp: Exp) => Exp,
     // formatting
     initEnv: Env,
-    formatExp: (exp: Exp, childing: Childing<Zip>) => (env: Env) => Node<Dat>,
-    formatZip: (zips: List<Zip>, childing: Childing<Zip>) => (kid: (env: Env) => Node<Dat>) => (env: Env) => Node<Dat>,
+    formatExp: (exp: Exp, childing: Childing<Zip>) => (env: Env) => ExpNode<Exp, Dat>,
+    formatZip: (zips: List<Zip>, childing: Childing<Zip>) => (kid: (env: Env) => ExpNode<Exp, Dat>) => (env: Env) => ExpNode<Exp, Dat>,
     // actions
     interpQueryString: (st: State<Exp, Zip, Dat>, str: string) => Action<Exp, Zip>[],
     handleAction: (act: Action<Exp, Zip>) => EndoPart<State<Exp, Zip, Dat>>,
@@ -190,24 +195,26 @@ export function buildBackend<Exp, Zip, Dat, Env>(
 ): Backend<Exp, Zip, Dat> {
     return {
         props: {
+            zipExp,
+            unzipExp,
             format: (st, query) => {
-                function formatQueryAround(kid: (env: Env) => Node<Dat>, childing: Childing<Zip>): (env: Env) => Node<Dat> {
+                function formatQueryAround(kid: (env: Env) => ExpNode<Exp, Dat>, childing: Childing<Zip>): (env: Env) => ExpNode<Exp, Dat> {
                     if (query.str.length > 0) {
                         const acts = interpQueryString(st, query.str)
                         if (acts.length === 0) {
-                            return formatQueryInvalidAround(query.str, kid)
+                            return formatWrapperNodeAround({ case: 'query-invalid', string: query.str },
+                                kid)
                         } else {
                             const act = acts[query.i % acts.length]
                             switch (act.case) {
                                 case 'replace':
-                                    return formatQueryReplaceAround(
-                                        formatExp(act.exp, childing),
-                                        kid)
+                                    return formatWrapperNodeAround({ case: 'query-replace' },
+                                        formatExp(act.exp, childing))
                                 case 'insert':
-                                    console.log("formatQueryAround insert childing", childing)
-                                    return formatQueryInsertTopAround(
-                                        formatZip(act.zips, childing)(
-                                            formatQueryInsertBotAround(kid)))
+                                    return formatWrapperNodeAround({ case: 'query-insert-top' },
+                                        formatZip(act.zips, childing)
+                                            (formatWrapperNodeAround({ case: 'query-insert-bot' },
+                                                kid)))
                                 default:
                                     // TODO: special display for other kinds of actions?
                                     return kid
@@ -220,23 +227,25 @@ export function buildBackend<Exp, Zip, Dat, Env>(
 
                 switch (st.mode.case) {
                     case 'cursor': {
-                        console.log("formatNode cursor childing", st.mode.cursor.zips.get(0))
                         return formatZip(st.mode.cursor.zips, undefined)
                             (formatQueryAround(
-                                formatCursorClaspAround(
+                                formatWrapperNodeAround({ case: 'cursor' },
                                     formatExp(st.mode.cursor.exp, st.mode.cursor.zips.get(0))),
-                                st.mode.cursor.zips.get(0)))
-                            (initEnv)
+                                st.mode.cursor.zips.get(0)
+                            ))(initEnv).node
+
                     }
                     case 'select':
                         return formatZip(st.mode.select.zipsTop, undefined)
                             (formatQueryAround(
-                                formatSelectClaspTopAround(
-                                    formatZip(st.mode.select.zipsBot, st.mode.select.zipsTop.get(0))(
-                                        formatSelectClaspBotAround(
-                                            formatExp(st.mode.select.exp, getZipsBot(st.mode.select).get(0))))),
-                                st.mode.select.zipsTop.get(0)))
-                            (initEnv)
+                                formatWrapperNodeAround({ case: 'select-top' },
+                                    formatZip(st.mode.select.zipsBot, st.mode.select.zipsTop.get(0))
+                                        (formatWrapperNodeAround({ case: 'select-bot' },
+                                            formatExp(st.mode.select.exp, getZipsBot(st.mode.select).get(0))
+                                        ))
+                                ),
+                                st.mode.select.zipsTop.get(0)
+                            ))(initEnv).node
                 }
             },
             interpQueryString,
