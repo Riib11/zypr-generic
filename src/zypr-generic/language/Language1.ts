@@ -29,10 +29,10 @@ export type Zip = PreExp & {
 
 // Dat
 export type Dat = {
-    preExp: PreExp | undefined,
+    preExp: PreExp,
     isParenthesized: boolean,
     isApp: boolean,
-    indented: boolean
+    indent: number | undefined
 }
 
 // 

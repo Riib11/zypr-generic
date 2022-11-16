@@ -26,62 +26,104 @@ export default function frontend<Exp, Zip>
         }
         switch (node.case) {
             case 'exp': {
-                const paren = (es: JSX.Element[]): JSX.Element[] => {
-                    if (node.dat.isParenthesized) {
-                        return (
-                            [<div className="punc punc-paren punc-paren-left">(</div>]
-                                .concat(es)
-                                .concat(<div className="punc punc-paren punc-paren-right">)</div>)
-                        )
-                    } else {
-                        return es
+                const indent = (es: JSX.Element[]): JSX.Element[] => {
+                    if (node.dat.indent !== undefined) {
+                        let str = ""
+                        for (var i = 0; i < node.dat.indent; i++) str += "  "
+                        return ([
+                            <br className="punc punc-newline" />,
+                            <div className="punc punc-indent">{str}</div>
+                        ]).concat(es)
                     }
+                    return es
+                }
+
+                const paren = (es: JSX.Element[]): JSX.Element[] => {
+                    if (node.dat.isParenthesized) return (
+                        [<div className="punc punc-paren punc-paren-left">(</div>]
+                            .concat(es)
+                            .concat(<div className="punc punc-paren punc-paren-right">)</div>))
+                    return es
                 }
 
                 if (node.dat.preExp === undefined) throw new Error("impossible")
                 switch (node.dat.preExp.case) {
                     case 'var':
-                        return [aux([
+                        return indent([aux([
                             aux([<span>{node.dat.preExp.dat.label}</span>], ["node-exp-var-label"])
-                        ], ["node-exp-var"])]
+                        ], ["node-exp-var"])])
                     case 'app':
-                        return [aux(paren([
+                        return indent([aux(paren([
                             aux(renderNode(node.kids[0]), ["node-exp-app-arg"]),
                             <div className="punc punc-space"> </div>,
                             aux(renderNode(node.kids[1]), ["node-exp-app-apl"])
-                        ]), ["node-exp-app"])]
+                        ]), ["node-exp-app"])])
                     case 'hol':
-                        return [aux([<span>?</span>], ["node-exp-var"])]
+                        return indent([aux(
+                            [<span>?</span>],
+                            ["node-exp-hol"])])
                 }
             }
             case 'wrapper': {
+                const indent = (es: JSX.Element[], kid: Node<Dat>): JSX.Element[] => {
+                    switch (kid.case) {
+                        case 'exp': {
+                            if (kid.dat.indent) {
+                                let str = ""
+                                for (var i = 0; i < kid.dat.indent; i++) str += "  "
+                                return ([
+                                    <br className="punc punc-newline" />,
+                                    <div className="punc punc-indent">{str}</div>
+                                ]).concat(es)
+                            }
+                            else return es
+                        }
+                        default: return es
+                    }
+                }
+
+                const unindent = (kid: Node<Dat>): Node<Dat> => {
+                    switch (kid.case) {
+                        case 'exp': return { ...kid, dat: { ...kid.dat, indent: undefined } }
+                        default: return kid
+                    }
+                }
+
                 switch (node.wrapper.case) {
-                    case 'cursor': return [
-                        aux(renderNode(node.kids[0]), ["node-cursor"])
-                    ]
-                    case 'select-top': return [
-                        aux(renderNode(node.kids[0]), ["node-select-top"])
-                    ]
-                    case 'select-bot': return [
-                        aux(renderNode(node.kids[0]), ["node-select-bot"])
-                    ]
+                    case 'cursor': return indent([
+                        aux(renderNode(unindent(node.kids[0])), ["node-cursor"])
+                    ], node.kids[0])
+                    case 'select-top': return indent([
+                        aux(renderNode(unindent(node.kids[0])), ["node-select-top"])
+                    ], node.kids[0])
+                    case 'select-bot': return indent([
+                        aux(renderNode(unindent(node.kids[0])), ["node-select-bot"])
+                    ], node.kids[0])
                     case 'query-replace': {
-                        return [aux([
-                            aux(renderNode(node.kids[0]), ["node-query-replace-exp-new"]),
-                            aux(renderNode(node.kids[1]), ["node-query-replace-exp-old"]),
-                        ], ["node-query-replace"])]
+                        return indent([aux([
+                            aux(renderNode(unindent(node.kids[0])), ["node-query-replace-exp-new"]),
+                            aux(renderNode(unindent(node.kids[1])), ["node-query-replace-exp-old"]),
+                        ], ["node-query-replace"])],
+                            node.kids[1])
                     }
                     case 'query-insert-top': {
-                        return [aux(renderNode(node.kids[0]), ["node-query-insert-top"])]
+                        // return indent(
+                        //     [aux(renderNode(unindent(node.kids[0])), ["node-query-insert-top"])],
+                        //     node.kids[0])
+                        return [aux(renderNode(unindent(node.kids[0])), ["node-query-insert-top"])]
+
                     }
                     case 'query-insert-bot': {
-                        return [aux(renderNode(node.kids[0]), ["node-query-insert-bot"])]
+                        // return indent([aux(renderNode(unindent(node.kids[0])), ["node-query-insert-bot"])],
+                        //     node.kids[0])
+                        return [aux(renderNode(unindent(node.kids[0])), ["node-query-insert-bot"])]
                     }
                     case 'query-invalid': {
-                        return [aux([
+                        return indent([aux([
                             aux([<span>{node.wrapper.string}</span>], ["node-query-invalid-string"]),
-                            aux(renderNode(node.kids[0]), ["node-query-invalid-exp"])
-                        ], ["node-query-invalid"])]
+                            aux(renderNode(unindent(node.kids[0])), ["node-query-invalid-exp"])
+                        ], ["node-query-invalid"])],
+                            node.kids[0])
                     }
                 }
             }

@@ -2,40 +2,55 @@
 
 .node {
     display: inline;
+
+    /* box-decoration-break: slice;
+    -webkit-box-decoration-break: slice;
+    -o-box-decoration-break: slice; */
 }
 
 /* node cursor */
 
 .node-cursor {
+    /* border-left: 2px solid black;
+    border-right: 2px solid black; */
+    /* box-shadow: -2px 0 0 0 black, 2px 0 0 0 black; */
+    /* background-color: red; */
     box-shadow: 0 0 0 1px black;
 }
 
 /* node select */
 
 .node-select-top {
-    background-color: rgb(209, 209, 255);
+    /* border-left: 2px solid black;
+    border-right: 2px solid black; */
+    /* box-shadow: -2px 0 0 0 black, 2px 0 0 0 black; */
     box-shadow: 0 0 0 1px black;
+    background-color: rgb(211, 211, 255);
 }
 
 .node-select-bot {
-    background-color: white;
+    /* border-left: 2px solid black;
+    border-right: 2px solid black; */
+    /* box-shadow: -2px 0 0 0 black, 2px 0 0 0 black; */
     box-shadow: 0 0 0 1px black;
+    background-color: white;
 }
 
 /* node query */
 
 .node-query-replace {
-    /* box-shadow: 0 0 0 1px orange; */
+    /* border-left: 2px solid black;
+    border-right: 2px solid black; */
+    /* box-shadow: -2px 0 0 0 black, 2px 0 0 0 black; */
+    box-shadow: 0 0 0 1px black;
 }
 
 .node-query-replace-exp-new {
     background-color: rgb(255, 197, 89);
-    padding-right: 0.2rem;
 }
 
 .node-query-replace-exp-old {
     background-color: rgb(186, 186, 186);
-    padding-left: 0.2rem;
 }
 
 .node-query-insert-top {
@@ -86,4 +101,12 @@
 
 .punc-space {
     white-space: pre;
+}
+
+.punc-indent {
+    white-space: pre;
+}
+
+.punc-newline {
+    /* display: block */
 }

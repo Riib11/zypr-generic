@@ -1,5 +1,4 @@
 html {
-  font-size: 12pt;
   user-select: none;
 }
 
@@ -15,11 +14,14 @@ body {}
   box-shadow: 0 0 0 1px black;
   width: 500px;
   height: 500px;
+  line-height: 1.2rem;
 
   overflow: scroll;
 
   white-space: pre;
   font-family: monospace;
+  font-size: 12pt;
+  /* line-height: 15pt; */
 }
 
 .editor-inner {

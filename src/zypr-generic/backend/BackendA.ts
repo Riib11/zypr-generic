@@ -5,26 +5,30 @@ import { Dat, Exp, fixSelect, mkHol, moveCursor, moveSelect, PreExp, unzipExp, Z
 import { Node, ExpNode } from "../Node";
 
 type Env = RecordOf<{
-    indented: boolean
+    indentationLevel: number
 }>
 
 export default function backend(): Backend.Backend<Exp, Zip, Dat> {
 
     const initEnv: Env = Record({
-        indented: false
+        indentationLevel: 0
     })()
+
+    const isArg = (childing: Backend.Childing<Zip>) =>
+        childing !== undefined &&
+        childing.case === 'app' &&
+        childing.kidsLeft.size === 1
 
     function nextEnv(
         preExp: PreExp,
         i: number,
+        childing: Backend.Childing<Zip>,
         env: Env
     ): Env {
-        switch (preExp.case) {
+        if (childing === undefined) return env
+        switch (childing.case) {
             case 'var': return env
-            case 'app': {
-                if (i == 1) return env.set('indented', true)
-                else return env
-            }
+            case 'app': return isArg(childing) ? env.update('indentationLevel', (i) => i + 1) : env
             case 'hol': return env
         }
     }
@@ -33,9 +37,9 @@ export default function backend(): Backend.Backend<Exp, Zip, Dat> {
         case: 'exp',
         dat: {
             preExp,
-            isParenthesized: childing?.case === 'app' && childing?.kidsLeft.size === 1 && preExp.case === 'app',
+            isParenthesized: isArg(childing) && preExp.case === 'app',
             isApp: preExp.case === 'app',
-            indented: env.indented
+            indent: isArg(childing) ? env.indentationLevel : undefined
         },
         kids: kids.map(kid => kid.node)
     })
@@ -51,7 +55,7 @@ export default function backend(): Backend.Backend<Exp, Zip, Dat> {
                 node: formatPreExp(
                     exp,
                     env,
-                    exp.kids.map((kid, i) => formatExp(kid, zipExp(exp, i))(nextEnv(exp, i, env))),
+                    exp.kids.map((kid, i) => formatExp(kid, zipExp(exp, i))(nextEnv(exp, i, zipExp(exp, i), env))),
                     childing)
             }
             case 'hol': return {
@@ -70,13 +74,13 @@ export default function backend(): Backend.Backend<Exp, Zip, Dat> {
                     return node
                 } else {
                     return formatZip(zips.shift(), childing)((env): ExpNode<Exp, Dat> => {
-                        const kid = node(nextEnv(zip, zip.kidsLeft.size + 1, env))
+                        const kid = node(nextEnv(zip, zip.kidsLeft.size + 1, zip, env))
                         const exp = unzipExp(zip, kid.exp)
 
                         const kidsLeft: ExpNode<Exp, Dat>[] = zip.kidsLeft.reverse().map((kid, i) =>
-                            formatExp(kid, zipExp(exp, i))(nextEnv(zip, i, env))).toArray()
+                            formatExp(kid, zipExp(exp, i))(nextEnv(zip, i, zipExp(exp, i), env))).toArray()
                         const kidsRight: ExpNode<Exp, Dat>[] = zip.kidsRight.map((kid, i) =>
-                            formatExp(kid, zipExp(exp, i + zip.kidsLeft.size + 1))(nextEnv(zip, i + zip.kidsLeft.size + 1, env))).toArray()
+                            formatExp(kid, zipExp(exp, i + zip.kidsLeft.size + 1))(nextEnv(zip, i + zip.kidsLeft.size + 1, zipExp(exp, i + zip.kidsLeft.size + 1), env))).toArray()
 
                         const kids: ExpNode<Exp, Dat>[] = ([] as ExpNode<Exp, Dat>[]).concat(kidsLeft, [kid], kidsRight)
                         return {
@@ -124,6 +128,39 @@ export default function backend(): Backend.Backend<Exp, Zip, Dat> {
             return acts
         }
 
+    }
+
+    function interpKeyboardCommandEvent(st: Backend.State<Exp, Zip, Dat>, event: KeyboardEvent): Backend.Action<Exp, Zip> | undefined {
+        if (event.ctrlKey || event.metaKey) {
+            if (event.key === 'c') return { case: 'copy' }
+            else if (event.key === 'x') return { case: 'cut' }
+            else if (event.key === 'v') return { case: 'paste' }
+            else if (event.key === 'Z') return { case: 'redo' }
+            else if (event.key === 'z') return { case: 'undo' }
+        }
+        if (event.key === 'Tab') {
+            switch (st.mode.case) {
+                case 'cursor': {
+                    const exp: Exp | undefined = (() => {
+                        switch (st.mode.cursor.exp.case) {
+                            case 'app': {
+                                const dat = st.mode.cursor.exp.dat
+                                return { ...st.mode.cursor.exp, dat: { ...dat, indentedArg: !dat.indentedArg } }
+                            }
+                            default: return undefined
+                        }
+                    })()
+                    if (exp !== undefined) return { case: 'replace', exp: st.mode.cursor.exp }
+                    else return undefined
+                }
+                case 'select': {
+                    // TODO: indent everything in selection
+                    return undefined
+                }
+            }
+        }
+
+        return undefined
     }
 
     function handleAction(
@@ -246,12 +283,7 @@ export default function backend(): Backend.Backend<Exp, Zip, Dat> {
     const initExp: Exp = mkHol()
 
     return Backend.buildBackend<Exp, Zip, Dat, Env>(
-        zipExp, unzipExp,
-        initEnv,
-        formatExp, formatZip,
-        interpQueryString, handleAction,
-        initExp
-    )
+        { zipExp, unzipExp, initEnv, formatExp, formatZip, interpQueryString, interpKeyboardCommandEvent, handleAction, initExp })
 }
 
 export function escapeSelect(select: Backend.Select<Exp, Zip>): Backend.Cursor<Exp, Zip> {

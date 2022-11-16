@@ -13,10 +13,11 @@ export type Backend<Exp, Zip, Dat> = {
 }
 
 export type Props<Exp, Zip, Dat> = {
-    zipExp: (exp: Exp, i: number) => Zip,
+    zipExp: (exp: Exp, i: number) => Zip | undefined,
     unzipExp: (zip: Zip, exp: Exp) => Exp,
     format: (st: State<Exp, Zip, Dat>, query: Query) => Node<Dat>,
     interpQueryString: (st: State<Exp, Zip, Dat>, str: string) => Action<Exp, Zip>[],
+    interpKeyboardCommandEvent: (st: State<Exp, Zip, Dat>, event: KeyboardEvent) => Action<Exp, Zip> | undefined,
     handleAction: (act: Action<Exp, Zip>) => EndoPart<State<Exp, Zip, Dat>>
 }
 
@@ -183,18 +184,18 @@ export function setZipsBot<Exp, Zip>(select: Select<Exp, Zip>, zips: List<Zip>) 
 // buildBackend
 
 export function buildBackend<Exp, Zip, Dat, Env>(
-    // zip/unzip
-    zipExp: (exp: Exp, i: number) => Zip,
-    unzipExp: (zip: Zip, exp: Exp) => Exp,
-    // formatting
-    initEnv: Env,
-    formatExp: (exp: Exp, childing: Childing<Zip>) => (env: Env) => ExpNode<Exp, Dat>,
-    formatZip: (zips: List<Zip>, childing: Childing<Zip>) => (kid: (env: Env) => ExpNode<Exp, Dat>) => (env: Env) => ExpNode<Exp, Dat>,
-    // actions
-    interpQueryString: (st: State<Exp, Zip, Dat>, str: string) => Action<Exp, Zip>[],
-    handleAction: (act: Action<Exp, Zip>) => EndoPart<State<Exp, Zip, Dat>>,
-    // program
-    initExp: Exp,
+    { zipExp, unzipExp, initEnv, formatExp, formatZip, interpQueryString, interpKeyboardCommandEvent, handleAction, initExp }: {
+        zipExp: (exp: Exp, i: number) => Zip | undefined,
+        unzipExp: (zip: Zip, exp: Exp) => Exp,
+        initExp: Exp,
+        // actions
+        interpQueryString: (st: State<Exp, Zip, Dat>, str: string) => Action<Exp, Zip>[],
+        interpKeyboardCommandEvent: (st: State<Exp, Zip, Dat>, event: KeyboardEvent) => Action<Exp, Zip> | undefined,
+        handleAction: (act: Action<Exp, Zip>) => EndoPart<State<Exp, Zip, Dat>>,
+        // formatting
+        initEnv: Env; formatExp: (exp: Exp, childing: Childing<Zip>) => (env: Env) => ExpNode<Exp, Dat>,
+        formatZip: (zips: List<Zip>, childing: Childing<Zip>) => (kid: (env: Env) => ExpNode<Exp, Dat>) => (env: Env) => ExpNode<Exp, Dat>
+    },
 ): Backend<Exp, Zip, Dat> {
     return {
         props: {
@@ -259,6 +260,7 @@ export function buildBackend<Exp, Zip, Dat, Env>(
                             ))(initEnv).node
                 }
             },
+            interpKeyboardCommandEvent,
             interpQueryString,
             handleAction
         },

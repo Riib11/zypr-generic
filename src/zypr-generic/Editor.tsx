@@ -80,51 +80,44 @@ export function renderEditor<Exp, Zip, Dat>(
         }
 
         function handleKeyboard(editor: Editor<Exp, Zip, Dat>, event: KeyboardEvent): void {
-            console.log(event.key)
+            // console.log(event.key)
+
+            // try to interpret as keyboard command
+            {
+                const act = editor.props.backend.interpKeyboardCommandEvent
+                    (editor.state.backend, event)
+                if (act !== undefined) {
+                    event.preventDefault()
+                    modifyBackendState(editor,
+                        editor.props.backend.handleAction(act))
+                }
+            }
 
             // try to interact with query
             const query = interactQuery(event, editor.state.query)
             if (query !== undefined) {
-                const acts = editor.props.backend.interpQueryString
-                    (editor.state.backend, query.str)
                 editor.setState({ ...editor.state, query })
                 event.preventDefault()
                 return
             } else {
                 // if that doesn't work, then non-query-interaction action
-
                 const isQueryless = editor.state.query.str.length === 0
-                let act: Backend.Action<Exp, Zip> | undefined;
 
-                if (event.key === 'ArrowLeft') {
-                    act = { case: event.shiftKey ? 'move_select' : 'move_cursor', dir: 'left' }
-                } else if (event.key === 'ArrowRight') {
-                    act = { case: event.shiftKey ? 'move_select' : 'move_cursor', dir: 'right' }
-                } else if (event.key === 'ArrowUp' && isQueryless) {
-                    act = { case: event.shiftKey ? 'move_select' : 'move_cursor', dir: 'up' }
-                } else if (event.key === 'ArrowDown' && isQueryless) {
-                    act = { case: event.shiftKey ? 'move_select' : 'move_cursor', dir: 'down' }
-                } else if (event.key === 'Enter') {
-                    act = Backend.interpQueryAction(
-                        editor.props.backend,
-                        editor.state.backend,
-                        editor.state.query
-                    ) ?? act
-                } else if (event.key === 'Escape') {
-                    act = { case: 'escape' }
-                } else if (event.key === 'Backspace') {
-                    act = { case: 'delete' }
-                } else if (event.ctrlKey || event.metaKey) {
-                    if (event.key === 'c') act = { case: 'copy' }
-                    else if (event.key === 'x') act = { case: 'cut' }
-                    else if (event.key === 'v') act = { case: 'paste' }
-                    else if (event.key === 'Z') act = { case: 'redo' }
-                    else if (event.key === 'z') act = { case: 'undo' }
-                }
+                const act: Backend.Action<Exp, Zip> | undefined = (() => {
+                    if (event.key === 'ArrowLeft') return { case: event.shiftKey ? 'move_select' : 'move_cursor', dir: 'left' }
+                    else if (event.key === 'ArrowRight') return { case: event.shiftKey ? 'move_select' : 'move_cursor', dir: 'right' }
+                    else if (event.key === 'ArrowUp' && isQueryless) return { case: event.shiftKey ? 'move_select' : 'move_cursor', dir: 'up' }
+                    else if (event.key === 'ArrowDown' && isQueryless) return { case: event.shiftKey ? 'move_select' : 'move_cursor', dir: 'down' }
+                    else if (event.key === 'Enter') return Backend.interpQueryAction(editor.props.backend, editor.state.backend, editor.state.query)
+                    else if (event.key === 'Escape') return { case: 'escape' }
+                    else if (event.key === 'Backspace') return { case: 'delete' }
+                    return undefined
+                })()
+
                 if (act !== undefined) {
                     event.preventDefault()
-                    modifyBackendState(editor,
-                        editor.props.backend.handleAction(act))
+                    modifyBackendState
+                        (editor, editor.props.backend.handleAction(act))
                 }
             }
         }
