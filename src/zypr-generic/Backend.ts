@@ -2,7 +2,7 @@ import { List, Record, RecordOf } from 'immutable'
 import { EndoPart } from '../Endo'
 import { Direction } from './Direction'
 import { Query } from './Editor'
-import { ExpNode, formatWrapperNodeAround, Node } from './Node'
+import { ExpNode, formatWrapper, Node } from './Node'
 
 // Env: render environment
 // Dat: render data
@@ -84,7 +84,7 @@ export function updateState<Exp, Zip, Dat>(f: EndoPart<State<Exp, Zip, Dat>>): E
         const st_ = f(st)
         if (st_ === undefined) return undefined
         return st_
-            .update('history', (hist) => hist.unshift(st))
+            .update('history', (hist) => hist.size < 500 ? hist.unshift(st) : hist)
             .set('future', List([]))
     }
 }
@@ -93,24 +93,27 @@ export function updateMode<Exp, Zip, Dat>(f: EndoPart<Mode<Exp, Zip>>): EndoPart
     return (st) => {
         return st
             .update('mode', (mode) => f(mode) ?? mode)
-            .update('history', (hist) => hist.unshift(st))
+            .update('history', (hist) => hist.size < 500 ? hist.unshift(st) : hist)
             .set('future', List([]))
     }
 }
 
 export function undo<Exp, Zip, Dat>(): EndoPart<State<Exp, Zip, Dat>> {
     return (st) => {
-        const st_ = st.get('history').get(0)
+        console.log("history.size", st.history.size)
+        const st_ = st.history.get(0)
         if (st_ === undefined) return undefined
-        return st.update('future', futr => futr.unshift(st))
+        return st_
+            .update('future', futr => futr.size < 500 ? futr.unshift(st) : futr)
     }
 }
 
 export function redo<Exp, Zip, Dat>(): EndoPart<State<Exp, Zip, Dat>> {
     return (st) => {
-        const st_ = st.get('future').get(0)
+        const st_ = st.future.get(0)
         if (st_ === undefined) return undefined
-        return st.update('history', hist => hist.unshift(st))
+        return st_
+            .update('history', hist => hist.size < 500 ? hist.unshift(st) : hist)
     }
 }
 
@@ -154,9 +157,9 @@ export function paste<Exp, Zip, Dat>(): EndoPart<State<Exp, Zip, Dat>> {
             case 'zips': {
                 switch (st.mode.case) {
                     case 'cursor': return st
-                        .set('mode', { case: 'cursor', cursor: { zips: st.mode.cursor.zips.concat(st.clipboard.zips), exp: st.mode.cursor.exp } })
+                        .set('mode', { case: 'cursor', cursor: { zips: st.clipboard.zips.concat(st.mode.cursor.zips), exp: st.mode.cursor.exp } })
                     case 'select': return st
-                        .set('mode', { case: 'cursor', cursor: { zips: st.mode.select.zipsTop.concat(st.clipboard.zips), exp: st.mode.select.exp } })
+                        .set('mode', { case: 'cursor', cursor: { zips: st.clipboard.zips.concat(st.mode.select.zipsTop), exp: st.mode.select.exp } })
                 }
             }
         }
@@ -198,51 +201,59 @@ export function buildBackend<Exp, Zip, Dat, Env>(
             zipExp,
             unzipExp,
             format: (st, query) => {
+
+                const acts: Action<Exp, Zip>[] | undefined =
+                    query.str.length > 0 ?
+                        interpQueryString(st, query.str) :
+                        undefined
+                const act =
+                    acts !== undefined && acts.length > 0 ?
+                        acts[query.i % acts.length] :
+                        undefined
+                const childingQuery =
+                    act !== undefined && act.case === 'insert' ?
+                        act.zips.get(0) :
+                        undefined
+
                 function formatQueryAround(kid: (env: Env) => ExpNode<Exp, Dat>, childing: Childing<Zip>): (env: Env) => ExpNode<Exp, Dat> {
-                    if (query.str.length > 0) {
-                        const acts = interpQueryString(st, query.str)
-                        if (acts.length === 0) {
-                            return formatWrapperNodeAround({ case: 'query-invalid', string: query.str },
-                                kid)
-                        } else {
-                            const act = acts[query.i % acts.length]
-                            switch (act.case) {
-                                case 'replace':
-                                    return formatWrapperNodeAround({ case: 'query-replace' },
-                                        formatExp(act.exp, childing))
-                                case 'insert':
-                                    return formatWrapperNodeAround({ case: 'query-insert-top' },
-                                        formatZip(act.zips, childing)
-                                            (formatWrapperNodeAround({ case: 'query-insert-bot' },
-                                                kid)))
-                                default:
-                                    // TODO: special display for other kinds of actions?
-                                    return kid
-                            }
-                        }
+                    if (act === undefined) {
+                        return formatWrapper({ case: 'query-invalid', string: query.str },
+                            [kid])
                     } else {
-                        return kid
+                        switch (act.case) {
+                            case 'replace':
+                                return formatWrapper({ case: 'query-replace' },
+                                    [formatExp(act.exp, childing), kid])
+                            case 'insert':
+                                return formatWrapper({ case: 'query-insert-top' },
+                                    [formatZip(act.zips, childing)
+                                        (formatWrapper({ case: 'query-insert-bot' },
+                                            [kid]))])
+                            default:
+                                // TODO: special display for other kinds of actions?
+                                return kid
+                        }
                     }
                 }
 
                 switch (st.mode.case) {
                     case 'cursor': {
+                        st.mode.cursor.zips.get(0)
                         return formatZip(st.mode.cursor.zips, undefined)
                             (formatQueryAround(
-                                formatWrapperNodeAround({ case: 'cursor' },
-                                    formatExp(st.mode.cursor.exp, st.mode.cursor.zips.get(0))),
+                                formatWrapper({ case: 'cursor' },
+                                    [formatExp(st.mode.cursor.exp, childingQuery ?? st.mode.cursor.zips.get(0))]),
                                 st.mode.cursor.zips.get(0)
                             ))(initEnv).node
-
                     }
                     case 'select':
                         return formatZip(st.mode.select.zipsTop, undefined)
                             (formatQueryAround(
-                                formatWrapperNodeAround({ case: 'select-top' },
-                                    formatZip(st.mode.select.zipsBot, st.mode.select.zipsTop.get(0))
-                                        (formatWrapperNodeAround({ case: 'select-bot' },
-                                            formatExp(st.mode.select.exp, getZipsBot(st.mode.select).get(0))
-                                        ))
+                                formatWrapper({ case: 'select-top' },
+                                    [formatZip(st.mode.select.zipsBot, childingQuery ?? st.mode.select.zipsTop.get(0))
+                                        (formatWrapper({ case: 'select-bot' },
+                                            [formatExp(st.mode.select.exp, getZipsBot(st.mode.select).get(0))]
+                                        ))]
                                 ),
                                 st.mode.select.zipsTop.get(0)
                             ))(initEnv).node

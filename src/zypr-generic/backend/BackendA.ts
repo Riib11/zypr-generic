@@ -2,7 +2,7 @@ import { List, Record, RecordOf } from "immutable";
 import { EndoPart } from "../../Endo";
 import * as Backend from "../Backend";
 import { Dat, Exp, fixSelect, mkHol, moveCursor, moveSelect, PreExp, unzipExp, Zip, zipExp, zipsUp } from "../language/Language1";
-import { Node } from "../Node";
+import { Node, ExpNode } from "../Node";
 
 type Env = RecordOf<{
     indented: boolean
@@ -29,7 +29,7 @@ export default function backend(): Backend.Backend<Exp, Zip, Dat> {
         }
     }
 
-    const formatPreExp = (preExp: PreExp, env: Env, kids: Node<Dat>[], childing?: Backend.Childing<Zip>): Node<Dat> => ({
+    const formatPreExp = (preExp: PreExp, env: Env, kids: ExpNode<Exp, Dat>[], childing: Backend.Childing<Zip>): Node<Dat> => ({
         case: 'exp',
         dat: {
             preExp,
@@ -37,61 +37,62 @@ export default function backend(): Backend.Backend<Exp, Zip, Dat> {
             isApp: preExp.case === 'app',
             indented: env.indented
         },
-        kids
-        // kids: kidNodes.map((node, i) => {
-        //     function parenExp(node: Node<Dat> & { case: 'exp' }): Node<Dat> {
-        //         if (node.dat.isApp && i == 1)
-        //             return { ...node, dat: { ...node.dat, isParenthesized: true } }
-        //         else
-        //             return node
-        //     }
-
-        //     function parenNode(node: Node<Dat>): Node<Dat> {
-        //         switch (node.case) {
-        //             case 'exp': return parenExp(node)
-        //             case 'cursor': return parenNode(node.kids[0])
-        //             case 'select-top': return parenNode(node.kids[0])
-        //         }
-        //     }
-        //     parenNode(node)
-        // })
+        kids: kids.map(kid => kid.node)
     })
 
-    const formatExp = (exp: Exp, childing: Backend.Childing<Zip>) => (env: Env): Node<Dat> => {
+    const formatExp = (exp: Exp, childing: Backend.Childing<Zip>) => (env: Env): ExpNode<Exp, Dat> => {
         switch (exp.case) {
-            case 'var': return formatPreExp(exp, env, [], childing)
-            case 'app': return formatPreExp(
+            case 'var': return {
                 exp,
-                env,
-                [exp.kids[0], exp.kids[1]].map((kid, i) =>
-                    formatExp(kid, zipExp(exp, i))(nextEnv(exp, i, env))),
-                childing)
-            case 'hol': return formatPreExp(exp, env, [], childing)
+                node: formatPreExp(exp, env, [], childing)
+            }
+            case 'app': return {
+                exp,
+                node: formatPreExp(
+                    exp,
+                    env,
+                    exp.kids.map((kid, i) => formatExp(kid, zipExp(exp, i))(nextEnv(exp, i, env))),
+                    childing)
+            }
+            case 'hol': return {
+                exp,
+                node: formatPreExp(exp, env, [], childing)
+            }
         }
     }
 
-    const formatZip = (zips: List<Zip>, childing: Backend.Childing<Zip>) => (node: ((env: Env) => Node<Dat>)): (env: Env) => Node<Dat> => {
-        const zip = zips.get(0)
-        if (zip === undefined) {
-            return node
-        } else {
-            return formatZip(zips.shift(), childing)((env) => {
-                const kidsLeft = zip.kidsLeft.reverse().map((kid, i) => formatExp(kid)(nextEnv(zip, i, env))).toArray()
-                const kidCenter = node(nextEnv(zip, zip.kidsLeft.size + 1, env))
-                const kidsRight = zip.kidsRight.map((kid, i) => formatExp(kid, zip)(nextEnv(zip, i, env))).toArray()
-                const kids: Node<Dat>[] = ([] as Node<Dat>[]).concat(kidsLeft, [kidCenter], kidsRight)
-                // console.log("=======================================")
-                // console.log("formatZip zip", zip)
-                // console.log("formatZip childing", childing)
-                return formatPreExp(zip, env, kids, zips.get(1) ?? childing)
-            })
-        }
-    }
+    // formatZip: (zips: List<Zip>, childing: Childing<Zip>) => (kid: (env: Env) => ExpNode<Exp, Dat>) => (env: Env) => ExpNode<Exp, Dat>,
+    const formatZip =
+        (zips: List<Zip>, childing: Backend.Childing<Zip>) =>
+            (node: ((env: Env) => ExpNode<Exp, Dat>)): (env: Env) => ExpNode<Exp, Dat> => {
+                const zip = zips.get(0)
+                if (zip === undefined) {
+                    return node
+                } else {
+                    return formatZip(zips.shift(), childing)((env): ExpNode<Exp, Dat> => {
+                        const kid = node(nextEnv(zip, zip.kidsLeft.size + 1, env))
+                        const exp = unzipExp(zip, kid.exp)
 
-    function interpQuery(st: Backend.State<Exp, Zip, Dat>,
+                        const kidsLeft: ExpNode<Exp, Dat>[] = zip.kidsLeft.reverse().map((kid, i) =>
+                            formatExp(kid, zipExp(exp, i))(nextEnv(zip, i, env))).toArray()
+                        const kidsRight: ExpNode<Exp, Dat>[] = zip.kidsRight.map((kid, i) =>
+                            formatExp(kid, zipExp(exp, i + zip.kidsLeft.size + 1))(nextEnv(zip, i + zip.kidsLeft.size + 1, env))).toArray()
+
+                        const kids: ExpNode<Exp, Dat>[] = ([] as ExpNode<Exp, Dat>[]).concat(kidsLeft, [kid], kidsRight)
+                        return {
+                            exp: exp,
+                            node: formatPreExp(zip, env, kids, zips.get(1) ?? childing)
+                        }
+                    })
+                }
+            }
+
+    function interpQueryString(
+        st: Backend.State<Exp, Zip, Dat>,
         str: string
     ): Backend.Action<Exp, Zip>[] {
-        if (str === " ") {
+        if (str === "") return []
+        else if (str === " ") {
             const acts: Backend.Action<Exp, Zip>[] = [
                 {
                     case: 'insert',
@@ -233,18 +234,22 @@ export default function backend(): Backend.Backend<Exp, Zip, Dat> {
             case 'cut': return Backend.cut(mkHol())
             case 'copy': return Backend.copy()
             case 'paste': return Backend.paste()
-            default: return (st) => st // TODO
+            case 'undo': return Backend.undo()
+            case 'redo': return Backend.redo()
+            default: {
+                console.log("action case not implemented by backend:", act.case)
+                return (st) => st // TODO
+            }
         }
     }
 
     const initExp: Exp = mkHol()
 
     return Backend.buildBackend<Exp, Zip, Dat, Env>(
+        zipExp, unzipExp,
         initEnv,
-        formatExp,
-        formatZip,
-        interpQuery,
-        handleAction,
+        formatExp, formatZip,
+        interpQueryString, handleAction,
         initExp
     )
 }

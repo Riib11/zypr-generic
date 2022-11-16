@@ -38,8 +38,7 @@ export default function frontend<Exp, Zip>
                     }
                 }
 
-                if (node.dat.preExp === undefined)
-                    throw new Error("impossible")
+                if (node.dat.preExp === undefined) throw new Error("impossible")
                 switch (node.dat.preExp.case) {
                     case 'var':
                         return [aux([
@@ -55,32 +54,36 @@ export default function frontend<Exp, Zip>
                         return [aux([<span>?</span>], ["node-exp-var"])]
                 }
             }
-            case 'cursor': return [
-                aux(renderNode(node.kids[0]), ["node-cursor"])
-            ]
-            case 'select-top': return [
-                aux(renderNode(node.kids[0]), ["node-select-top"])
-            ]
-            case 'select-bot': return [
-                aux(renderNode(node.kids[0]), ["node-select-bot"])
-            ]
-            case 'query-replace': {
-                return [aux([
-                    aux(renderNode(node.kids[0]), ["node-query-replace-exp-new"]),
-                    aux(renderNode(node.kids[1]), ["node-query-replace-exp-old"]),
-                ], ["node-query-replace"])]
-            }
-            case 'query-insert-top': {
-                return [aux(renderNode(node.kids[0]), ["node-query-insert-top"])]
-            }
-            case 'query-insert-bot': {
-                return [aux(renderNode(node.kids[0]), ["node-query-insert-bot"])]
-            }
-            case 'query-invalid': {
-                return [aux([
-                    aux([<span>{node.string}</span>], ["node-query-invalid-string"]),
-                    aux(renderNode(node.kids[0]), ["node-query-invalid-exp"])
-                ], ["node-query-invalid"])]
+            case 'wrapper': {
+                switch (node.wrapper.case) {
+                    case 'cursor': return [
+                        aux(renderNode(node.kids[0]), ["node-cursor"])
+                    ]
+                    case 'select-top': return [
+                        aux(renderNode(node.kids[0]), ["node-select-top"])
+                    ]
+                    case 'select-bot': return [
+                        aux(renderNode(node.kids[0]), ["node-select-bot"])
+                    ]
+                    case 'query-replace': {
+                        return [aux([
+                            aux(renderNode(node.kids[0]), ["node-query-replace-exp-new"]),
+                            aux(renderNode(node.kids[1]), ["node-query-replace-exp-old"]),
+                        ], ["node-query-replace"])]
+                    }
+                    case 'query-insert-top': {
+                        return [aux(renderNode(node.kids[0]), ["node-query-insert-top"])]
+                    }
+                    case 'query-insert-bot': {
+                        return [aux(renderNode(node.kids[0]), ["node-query-insert-bot"])]
+                    }
+                    case 'query-invalid': {
+                        return [aux([
+                            aux([<span>{node.wrapper.string}</span>], ["node-query-invalid-string"]),
+                            aux(renderNode(node.kids[0]), ["node-query-invalid-exp"])
+                        ], ["node-query-invalid"])]
+                    }
+                }
             }
         }
     }

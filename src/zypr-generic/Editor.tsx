@@ -118,6 +118,8 @@ export function renderEditor<Exp, Zip, Dat>(
                     if (event.key === 'c') act = { case: 'copy' }
                     else if (event.key === 'x') act = { case: 'cut' }
                     else if (event.key === 'v') act = { case: 'paste' }
+                    else if (event.key === 'Z') act = { case: 'redo' }
+                    else if (event.key === 'z') act = { case: 'undo' }
                 }
                 if (act !== undefined) {
                     event.preventDefault()
