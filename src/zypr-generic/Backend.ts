@@ -45,6 +45,7 @@ export type Action<Exp, Zip>
     = { case: 'move_cursor', dir: Direction }
     | { case: 'move_select', dir: Direction }
     | { case: 'set_cursor', cursor: Cursor<Exp, Zip> }
+    | { case: 'set_select', select: Select<Exp, Zip> }
     | { case: 'replace', exp: Exp }
     | { case: 'insert', zips: List<Zip> }
     | { case: BasicAction }

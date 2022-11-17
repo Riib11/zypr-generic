@@ -1,5 +1,5 @@
 import { List, RecordOf } from "immutable"
-import { Cursor, Mode, Select } from "../Backend"
+import { Cursor, Mode, Orient, Select } from "../Backend"
 import { Direction } from "../Direction"
 
 // PreExp
@@ -32,7 +32,10 @@ export type Dat = {
     preExp: PreExp,
     isParenthesized: boolean,
     isApp: boolean,
-    indent: number | undefined
+    indent: number | undefined,
+    getCursor: () => Cursor<Exp, Zip>,
+    getSelectAtTop: (cursor: Cursor<Exp, Zip>) => Select<Exp, Zip>,
+    getSelectAtBot: (cursor: Cursor<Exp, Zip>) => Select<Exp, Zip>,
 }
 
 // 

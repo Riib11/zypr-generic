@@ -5,13 +5,15 @@ import { Dat, Exp, fixSelect, mkHol, moveCursor, moveSelect, PreExp, unzipExp, Z
 import { Node, ExpNode } from "../Node";
 
 type Env = RecordOf<{
-    indentationLevel: number
+    indentationLevel: number,
+    zips: List<Zip>
 }>
 
 export default function backend(): Backend.Backend<Exp, Zip, Dat> {
 
     const initEnv: Env = Record({
-        indentationLevel: 0
+        indentationLevel: 0,
+        zips: List([])
     })()
 
     const isArg = (childing: Backend.Childing<Zip>) =>
@@ -33,13 +35,16 @@ export default function backend(): Backend.Backend<Exp, Zip, Dat> {
         }
     }
 
-    const formatPreExp = (preExp: PreExp, env: Env, kids: ExpNode<Exp, Dat>[], childing: Backend.Childing<Zip>): Node<Dat> => ({
+    const formatPreExp = (exp: Exp, preExp: PreExp, env: Env, kids: ExpNode<Exp, Dat>[], childing: Backend.Childing<Zip>): Node<Dat> => ({
         case: 'exp',
         dat: {
             preExp,
             isParenthesized: isArg(childing) && preExp.case === 'app',
             isApp: preExp.case === 'app',
-            indent: isArg(childing) ? env.indentationLevel : undefined
+            indent: isArg(childing) ? env.indentationLevel : undefined,
+            getCursor: () => ({ zips: env.zips, exp }),
+            getSelectAtTop: (cursor) => { throw new Error("TODO") },
+            getSelectAtBot: (cursor) => { throw new Error("TODO") }
         },
         kids: kids.map(kid => kid.node)
     })
@@ -48,19 +53,18 @@ export default function backend(): Backend.Backend<Exp, Zip, Dat> {
         switch (exp.case) {
             case 'var': return {
                 exp,
-                node: formatPreExp(exp, env, [], childing)
+                node: formatPreExp(exp, exp, env, [], childing)
             }
-            case 'app': return {
-                exp,
-                node: formatPreExp(
+            case 'app': {
+                const kids = exp.kids.map((kid, i) => formatExp(kid, zipExp(exp, i))(nextEnv(exp, i, zipExp(exp, i), env)))
+                return {
                     exp,
-                    env,
-                    exp.kids.map((kid, i) => formatExp(kid, zipExp(exp, i))(nextEnv(exp, i, zipExp(exp, i), env))),
-                    childing)
+                    node: formatPreExp(exp, exp, env, kids, childing)
+                }
             }
             case 'hol': return {
                 exp,
-                node: formatPreExp(exp, env, [], childing)
+                node: formatPreExp(exp, exp, env, [], childing)
             }
         }
     }
@@ -85,7 +89,7 @@ export default function backend(): Backend.Backend<Exp, Zip, Dat> {
                         const kids: ExpNode<Exp, Dat>[] = ([] as ExpNode<Exp, Dat>[]).concat(kidsLeft, [kid], kidsRight)
                         return {
                             exp: exp,
-                            node: formatPreExp(zip, env, kids, zips.get(1) ?? childing)
+                            node: formatPreExp(exp, zip, env, kids, zips.get(1) ?? childing)
                         }
                     })
                 }
