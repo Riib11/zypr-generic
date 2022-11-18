@@ -1,7 +1,8 @@
 import { EndoPart } from "../../Endo";
 import * as Backend from "../Backend";
+import { Dat } from "../backend/BackendA";
 import Editor, { doAction, renderEditor } from "../Editor";
-import { Dat } from '../language/LanguageAlpha'
+import { Met, Rul, Val, VarVal } from '../language/LanguageAlpha'
 import { Node } from "../Node";
 
 /*
@@ -12,15 +13,15 @@ actually just appears as a exp node, with the className (added by
 `classNames.push(node.variant.modifier)`)
 */
 
-export default function frontend<Exp, Zip>
+export default function frontend
     ({ backend }: {
-        backend: Backend.Backend<Exp, Zip, Dat>,
+        backend: Backend.Backend<Met, Rul, Val, Dat>,
     }) {
     function renderNode(
-        node: Node<Exp, Zip, Dat>,
-        editor: Editor<Exp, Zip, Dat>
+        node: Node<Met, Rul, Val, Dat>,
+        editor: Editor<Met, Rul, Val, Dat>
     ): JSX.Element[] {
-        function go(node: Node<Exp, Zip, Dat>): JSX.Element[] {
+        function go(node: Node<Met, Rul, Val, Dat>): JSX.Element[] {
             let classNames = ["node"]
             function aux(es: JSX.Element[], extraClassNames?: string[]): JSX.Element {
                 const classNames_str = classNames.concat(extraClassNames ?? [])
@@ -68,11 +69,11 @@ export default function frontend<Exp, Zip>
                         return es
                     }
 
-                    if (node.dat.preExp === undefined) throw new Error("impossible")
-                    switch (node.dat.preExp.case) {
+                    if (node.dat.pre === undefined) throw new Error("impossible")
+                    switch (node.dat.pre.rul) {
                         case 'var':
                             return indent([aux([
-                                aux([<span>{node.dat.preExp.dat.label}</span>], ["node-exp-var-label"])
+                                aux([<span>{(node.dat.pre.val as VarVal).label}</span>], ["node-exp-var-label"])
                             ], ["node-exp-var"])])
                         case 'app':
                             return indent([aux(paren([
@@ -88,7 +89,7 @@ export default function frontend<Exp, Zip>
                     }
                 }
                 case 'wrapper': {
-                    const indent = (es: JSX.Element[], kid: Node<Exp, Zip, Dat>): JSX.Element[] => {
+                    const indent = (es: JSX.Element[], kid: Node<Met, Rul, Val, Dat>): JSX.Element[] => {
                         switch (kid.case) {
                             case 'exp': {
                                 if (kid.dat.indent) {
@@ -105,7 +106,7 @@ export default function frontend<Exp, Zip>
                         }
                     }
 
-                    const unindent = (kid: Node<Exp, Zip, Dat>): Node<Exp, Zip, Dat> => {
+                    const unindent = (kid: Node<Met, Rul, Val, Dat>): Node<Met, Rul, Val, Dat> => {
                         switch (kid.case) {
                             case 'exp': return { ...kid, dat: { ...kid.dat, indent: undefined } }
                             default: return kid
@@ -154,5 +155,5 @@ export default function frontend<Exp, Zip>
         }
         return go(node)
     }
-    return renderEditor<Exp, Zip, Dat>({ renderNode })(backend)
+    return renderEditor<Met, Rul, Val, Dat>({ renderNode })(backend)
 }

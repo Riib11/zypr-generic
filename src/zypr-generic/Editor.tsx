@@ -1,28 +1,28 @@
 import React from "react";
-import { EndoPart } from "../Endo";
+import { EndoPart, EndoReadPart } from "../Endo";
 import * as Backend from './Backend'
 import { Node } from "./Node";
 import interactQuery from "./QueryInteraction";
 
-export type Props<Exp, Zip, Dat> = {
-    backend: Backend.Props<Exp, Zip, Dat>,
-    render: (editor: Editor<Exp, Zip, Dat>) => JSX.Element[],
-    handleKeyboard: (editor: Editor<Exp, Zip, Dat>, event: KeyboardEvent) => void,
-    initState: State<Exp, Zip, Dat>
+export type Props<Met, Rul, Val, Dat> = {
+    backend: Backend.Props<Met, Rul, Val, Dat>,
+    render: (editor: Editor<Met, Rul, Val, Dat>) => JSX.Element[],
+    handleKeyboard: (editor: Editor<Met, Rul, Val, Dat>, event: KeyboardEvent) => void,
+    initState: State<Met, Rul, Val, Dat>
 }
 
-export type State<Exp, Zip, Dat> = {
-    backend: Backend.State<Exp, Zip, Dat>,
+export type State<Met, Rul, Val, Dat> = {
+    backend: Backend.State<Met, Rul, Val, Dat>,
     query: Query
 }
 
 export type Query = { str: string, i: number }
 
-export default class Editor<Exp, Zip, Dat>
-    extends React.Component<Props<Exp, Zip, Dat>, State<Exp, Zip, Dat>>
+export default class Editor<Met, Rul, Val, Dat>
+    extends React.Component<Props<Met, Rul, Val, Dat>, State<Met, Rul, Val, Dat>>
 {
     constructor(
-        props: Props<Exp, Zip, Dat>,
+        props: Props<Met, Rul, Val, Dat>,
     ) {
         super(props)
         this.state = props.initState
@@ -49,11 +49,11 @@ export default class Editor<Exp, Zip, Dat>
 
 // buildEditor
 
-export function modifyBackendState<Exp, Zip, Dat>(
-    editor: Editor<Exp, Zip, Dat>,
-    f: EndoPart<Backend.State<Exp, Zip, Dat>>
+export function modifyBackendState<Met, Rul, Val, Dat>(
+    editor: Editor<Met, Rul, Val, Dat>,
+    f: EndoReadPart<Backend.Props<Met, Rul, Val, Dat>, Backend.State<Met, Rul, Val, Dat>>
 ): void {
-    const backend = f(editor.state.backend)
+    const backend = f(editor.props.backend, editor.state.backend)
     if (backend !== undefined)
         editor.setState({
             backend,
@@ -61,9 +61,9 @@ export function modifyBackendState<Exp, Zip, Dat>(
         })
 }
 
-export function doAction<Exp, Zip, Dat>(
-    editor: Editor<Exp, Zip, Dat>,
-    act: Backend.Action<Exp, Zip>
+export function doAction<Met, Rul, Val, Dat>(
+    editor: Editor<Met, Rul, Val, Dat>,
+    act: Backend.Action<Met, Rul, Val>
 ): void {
     modifyBackendState(
         editor,
@@ -71,19 +71,19 @@ export function doAction<Exp, Zip, Dat>(
     )
 }
 
-export function renderEditor<Exp, Zip, Dat>(
+export function renderEditor<Met, Rul, Val, Dat>(
     { renderNode }: {
         renderNode: (
-            node: Node<Exp, Zip, Dat>,
-            editor: Editor<Exp, Zip, Dat>,
-            // doAction: (act: Backend.Action<Exp, Zip>) => void,
+            node: Node<Met, Rul, Val, Dat>,
+            editor: Editor<Met, Rul, Val, Dat>,
+            // doAction: (act: Backend.Action<Met,Rul,Val>) => void,
         ) =>
             JSX.Element[];
     }) {
 
-    return (backend: Backend.Backend<Exp, Zip, Dat>) => {
+    return (backend: Backend.Backend<Met, Rul, Val, Dat>) => {
 
-        function render(editor: Editor<Exp, Zip, Dat>) {
+        function render(editor: Editor<Met, Rul, Val, Dat>) {
             const node = editor.props.backend.format
                 (editor.state.backend, editor.state.query)
             return [
@@ -97,12 +97,12 @@ export function renderEditor<Exp, Zip, Dat>(
 
         }
 
-        function handleKeyboard(editor: Editor<Exp, Zip, Dat>, event: KeyboardEvent): void {
+        function handleKeyboard(editor: Editor<Met, Rul, Val, Dat>, event: KeyboardEvent): void {
             // console.log(event.key)
 
             // try to interpret as keyboard command
             {
-                const act = editor.props.backend.interpKeyboardCommandEvent
+                const act = editor.props.backend.interpretKeyboardCommandEvent
                     (editor.state.backend, event)
                 if (act !== undefined) {
                     event.preventDefault()
@@ -121,12 +121,12 @@ export function renderEditor<Exp, Zip, Dat>(
                 // if that doesn't work, then non-query-interaction action
                 const isQueryless = editor.state.query.str.length === 0
 
-                const act: Backend.Action<Exp, Zip> | undefined = (() => {
-                    if (event.key === 'ArrowLeft') return { case: event.shiftKey ? 'move_select' : 'move_cursor', dir: 'left' }
-                    else if (event.key === 'ArrowRight') return { case: event.shiftKey ? 'move_select' : 'move_cursor', dir: 'right' }
-                    else if (event.key === 'ArrowUp' && isQueryless) return { case: event.shiftKey ? 'move_select' : 'move_cursor', dir: 'up' }
-                    else if (event.key === 'ArrowDown' && isQueryless) return { case: event.shiftKey ? 'move_select' : 'move_cursor', dir: 'down' }
-                    else if (event.key === 'Enter') return Backend.interpQueryAction(editor.props.backend, editor.state.backend, editor.state.query)
+                const act = ((): Backend.Action<Met, Rul, Val> | undefined => {
+                    if (event.key === 'ArrowLeft') return { case: event.shiftKey ? 'move_select' : 'move_cursor', dir: { case: 'left' } }
+                    else if (event.key === 'ArrowRight') return { case: event.shiftKey ? 'move_select' : 'move_cursor', dir: { case: 'right' } }
+                    else if (event.key === 'ArrowUp' && isQueryless) return { case: event.shiftKey ? 'move_select' : 'move_cursor', dir: { case: 'up' } }
+                    else if (event.key === 'ArrowDown' && isQueryless) return { case: event.shiftKey ? 'move_select' : 'move_cursor', dir: { case: 'down', i: 0 } }
+                    else if (event.key === 'Enter') return Backend.interpretQueryAction(editor.props.backend, editor.state.backend, editor.state.query)
                     else if (event.key === 'Escape') return { case: 'escape' }
                     else if (event.key === 'Backspace') return { case: 'delete' }
                     return undefined
@@ -140,7 +140,7 @@ export function renderEditor<Exp, Zip, Dat>(
             }
         }
 
-        const initState: State<Exp, Zip, Dat> = {
+        const initState: State<Met, Rul, Val, Dat> = {
             backend: backend.state,
             query: { str: "", i: 0 }
         }

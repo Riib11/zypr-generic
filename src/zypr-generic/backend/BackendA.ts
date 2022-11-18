@@ -1,8 +1,8 @@
 import { List, Record, RecordOf } from "immutable";
 import { EndoPart, EndoReadPart } from "../../Endo";
 import * as Backend from "../Backend";
-import { Grammar, makeHole, makeZipTemplate, makeZipTemplates, moveCursor, moveSelect, unzipsExp, verifyExp, verifyZip, zipExp } from "../Language";
-import { Pre, Exp, Zip, Met, Rul, Val, AppVal } from "../language/LanguageAlpha";
+import { eqZip, Grammar, makeHole, makeZipTemplate, makeZipTemplates, moveCursor, moveSelect, unzipsExp, verifyExp, verifyZip, zipExp } from "../Language";
+import { Pre, Exp, Zip, Met, Rul, Val, AppVal, grammar } from "../language/LanguageAlpha";
 import { Node, ExpNode } from "../Node";
 
 type Env = RecordOf<{
@@ -17,9 +17,7 @@ export type Dat = {
     isParenthesized: boolean,
 }
 
-export default function backend(
-    gram: Grammar<Met, Rul, Val>
-): Backend.Backend<Met, Rul, Val, Dat> {
+export default function backend(): Backend.Backend<Met, Rul, Val, Dat> {
 
     function isValidSelect(select: Backend.Select<Met, Rul, Val>): boolean {
         // TODO: modify when there are lambdas with ids
@@ -47,6 +45,33 @@ export default function backend(
             case 'var': return env_
             case 'app': return env_.update('indentationLevel', (i) => isArg(childing) ? i + 1 : i)
             case 'hol': return env_
+        }
+    }
+
+    function escapeSelect(
+        select: Backend.Select<Met, Rul, Val>
+    ): Backend.Cursor<Met, Rul, Val> {
+        switch (select.orient) {
+            case 'top': return {
+                zips: select.zipsTop,
+                exp: unzipsExp(grammar, select.zipsBot.reverse(), select.exp)
+            }
+            case 'bot': return {
+                zips: select.zipsBot.concat(select.zipsTop),
+                exp: select.exp
+            }
+        }
+    }
+
+    function enterSelect(
+        cursor: Backend.Cursor<Met, Rul, Val>,
+        orient: Backend.Orient
+    ): Backend.Select<Met, Rul, Val> {
+        return {
+            zipsTop: cursor.zips,
+            zipsBot: List([]),
+            exp: cursor.exp,
+            orient
         }
     }
 
@@ -81,6 +106,8 @@ export default function backend(
         }
     })
 
+    const defined = <A>(a: A | undefined): A => a as A
+
     const formatExp = (exp: Exp, childing: Backend.Childing<Zip>) => (env: Env): ExpNode<Met, Rul, Val, Dat> => {
         switch (exp.rul) {
             case 'var': return {
@@ -89,8 +116,8 @@ export default function backend(
             }
             case 'app': {
                 const kids = exp.kids.map((kid, i) =>
-                    formatExp(kid, zipExp(gram, exp, i).zip)
-                        (nextEnv(zipExp(gram, exp, i).zip, env)))
+                    formatExp(kid, defined(zipExp(grammar, exp, i)).zip)
+                        (nextEnv(defined(zipExp(grammar, exp, i)).zip, env)))
                     .toArray()
                 return {
                     exp,
@@ -114,15 +141,28 @@ export default function backend(
                 } else {
                     return formatZip(zips.shift(), childing)((env): ExpNode<Met, Rul, Val, Dat> => {
                         const kid = node(nextEnv(zip, env))
-                        const exp = unzipsExp(gram, List([zip]), kid.exp)
+                        const exp = unzipsExp(grammar, List([zip]), kid.exp)
 
                         // is reversed
-                        const kidsLeft: ExpNode<Met, Rul, Val, Dat>[] = zip.kidsLeft.reverse().map((kid, i) =>
-                            formatExp(kid, zipExp(gram, exp, i).zip)(nextEnv(zipExp(gram, exp, i).zip, env))).toArray()
-                        const kidsRight: ExpNode<Met, Rul, Val, Dat>[] = zip.kidsRight.map((kid, i) =>
-                            formatExp(kid, zipExp(gram, exp, i + zip.kidsLeft.size + 1).zip)(nextEnv(zipExp(gram, exp, i + zip.kidsLeft.size + 1).zip, env))).toArray()
+                        const kidsLeft: ExpNode<Met, Rul, Val, Dat>[] =
+                            zip.kidsLeft.reverse().map((kid, i) =>
+                                formatExp(kid, defined(zipExp(grammar, exp, i)).zip)
+                                    (nextEnv(defined(zipExp(grammar, exp, i)).zip, env))
+                            ).toArray()
 
-                        const kids: ExpNode<Met, Rul, Val, Dat>[] = ([] as ExpNode<Met, Rul, Val, Dat>[]).concat(kidsLeft, [kid], kidsRight)
+                        const kidsRight: ExpNode<Met, Rul, Val, Dat>[] =
+                            zip.kidsRight.map((kid, i) =>
+                                formatExp(kid, defined(zipExp(grammar, exp, i + zip.kidsLeft.size + 1)).zip)
+                                    (nextEnv(defined(zipExp(grammar, exp, i + zip.kidsLeft.size + 1)).zip, env))
+                            ).toArray()
+
+                        const kids: ExpNode<Met, Rul, Val, Dat>[] =
+                            ([] as ExpNode<Met, Rul, Val, Dat>[]).concat(
+                                kidsLeft,
+                                [kid],
+                                kidsRight
+                            )
+
                         return {
                             exp: exp,
                             node: formatPre(exp, zip, env, kids, zips.get(1) ?? childing)
@@ -131,20 +171,25 @@ export default function backend(
                 }
             }
 
-    const interpQueryString = Backend.buildInterpQueryString(gram,
-        (met, str) => {
-            throw new Error("TODO");
+    const interpretQueryString = Backend.buildInterpretQueryString(grammar,
+        (met, str): { rul: Rul, val: Val } | undefined => {
+            switch (met) {
+                case 'exp': {
+                    if (str === " ") return { rul: 'app', val: { indentedArg: false } }
+                    else return { rul: 'var', val: { label: str } }
+                }
+            }
         }
     )
 
-    // function interpQueryString(
+    // function interpretQueryString(
     //     st: Backend.State<Met,Rul,Val,Dat>,
     //     str: string
     // ): Backend.Action<Met, Rul, Val>[] {
     //     if (str === "") return []
     //     else if (str === " ") {
     //         const acts: Backend.Action<Met, Rul, Val>[] =
-    //             makeZipTemplates(gram, 'exp', 'app').map((zip) => ({
+    //             makeZipTemplates(grammar, 'exp', 'app').map((zip) => ({
     //                 case: 'insert',
     //                 zips: List([zip])
     //             }))
@@ -153,7 +198,7 @@ export default function backend(
     //         const acts: Backend.Action<Met, Rul, Val>[] = [
     //             {
     //                 case: 'replace',
-    //                 exp: verifyExp(gram, {
+    //                 exp: verifyExp(grammar, {
     //                     met: 'exp',
     //                     rul: 'var',
     //                     val: { label: str },
@@ -165,7 +210,7 @@ export default function backend(
     //     }
     // }
 
-    function interpKeyboardCommandEvent(st: Backend.State<Met, Rul, Val, Dat>, event: KeyboardEvent): Backend.Action<Met, Rul, Val> | undefined {
+    function interpretKeyboardCommandEvent(st: Backend.State<Met, Rul, Val, Dat>, event: KeyboardEvent): Backend.Action<Met, Rul, Val> | undefined {
         if (event.ctrlKey || event.metaKey) {
             if (event.key === 'c') return { case: 'copy' }
             else if (event.key === 'x') return { case: 'cut' }
@@ -198,136 +243,19 @@ export default function backend(
         return undefined
     }
 
-    function handleAction(
-        act: Backend.Action<Met, Rul, Val>
-    ): EndoReadPart<Backend.Props<Met, Rul, Val, Dat>, Backend.State<Met, Rul, Val, Dat>> {
-        switch (act.case) {
-            case 'replace': {
-                return Backend.updateMode(mode => {
-                    switch (mode.case) {
-                        case 'cursor': return {
-                            case: 'cursor',
-                            cursor: {
-                                zips: mode.cursor.zips,
-                                exp: act.exp
-                            }
-                        }
-                        case 'select': return undefined
-                    }
-                })
-            }
-            case 'insert': {
-                return Backend.updateMode((mode): Backend.Mode<Met, Rul, Val> => {
-                    switch (mode.case) {
-                        case 'cursor': return {
-                            case: 'cursor',
-                            cursor: {
-                                zips: act.zips.concat(mode.cursor.zips),
-                                exp: mode.cursor.exp // wrapZipExp(act.zips, mode.cursor.exp)
-                            }
-                        }
-                        case 'select': return {
-                            case: 'select',
-                            select: Backend.setZipsBot(mode.select, act.zips)
-                        }
-                    }
-                })
-            }
-            case 'move_cursor': return Backend.updateMode((mode) => moveCursor(gram, act.dir, mode))
-            case 'move_select': return Backend.updateMode((mode) => moveSelect(gram, act.dir, mode))
-            case 'delete': {
-                return Backend.updateMode((mode): Backend.Mode<Met, Rul, Val> | undefined => {
-                    switch (mode.case) {
-                        case 'cursor': {
-                            return {
-                                case: 'cursor',
-                                cursor: {
-                                    zips: mode.cursor.zips,
-                                    exp: makeHole(gram, 'exp')
-                                }
-                            }
-                        }
-                        case 'select': {
-                            return {
-                                case: 'cursor',
-                                cursor: {
-                                    zips: mode.select.zipsTop,
-                                    exp: mode.select.exp
-                                }
-                            }
-                        }
-                    }
-                })
-            }
-            case 'escape': return Backend.updateMode((mode): Backend.Mode<Met, Rul, Val> | undefined => {
-                switch (mode.case) {
-                    case 'cursor': return undefined
-                    case 'select': return {
-                        case: 'cursor',
-                        cursor: escapeSelect(mode.select)
-                    }
-                }
-            })
-            case 'cut': return Backend.cut()
-            case 'copy': return Backend.copy()
-            case 'paste': return Backend.paste()
-            case 'undo': return Backend.undo()
-            case 'redo': return Backend.redo()
-            case 'set_cursor': {
-                return Backend.updateMode((mode): Backend.Mode<Met, Rul, Val> => ({
-                    case: 'cursor',
-                    cursor: act.cursor
-                }))
-            }
-            case 'set_select': {
-                return Backend.updateMode((mode): Backend.Mode<Met, Rul, Val> => ({
-                    case: 'select',
-                    select: act.select
-                }))
-            }
-            // default: {
-            //     console.log("action case not implemented by backend:", act.case)
-            //     return (st) => st // TODO
-            // }
-        }
-    }
+    const initExp: Exp = makeHole(grammar, 'exp')
 
-    const initExp: Exp = makeHole(gram, 'exp')
-
-    return Backend.buildBackend<Exp, Zip, Dat, Env>(
+    return Backend.buildBackend<Met, Rul, Val, Dat, Env>(
         {
-            grammar: gram,
+            grammar: grammar,
             isValidSelect,
-            makeInitEnv<Met, Rul, Val, Dat>,
+            makeInitEnv,
             formatExp,
             formatZip,
-            interpQueryString,
-            interpKeyboardCommandEvent,
-            handleAction,
+            interpretQueryString,
+            interpretKeyboardCommandEvent,
             initExp
         })
-}
-
-export function escapeSelect(select: Backend.Select<Met, Rul, Val>): Backend.Cursor<Met, Rul, Val> {
-    switch (select.orient) {
-        case 'top': return {
-            zips: select.zipsTop,
-            exp: zipsUp(select.zipsBot.reverse(), select.exp)
-        }
-        case 'bot': return {
-            zips: select.zipsBot.concat(select.zipsTop),
-            exp: select.exp
-        }
-    }
-}
-
-export function enterSelect(cursor: Backend.Cursor<Met, Rul, Val>, orient: Backend.Orient): Backend.Select<Met, Rul, Val> {
-    return {
-        zipsTop: cursor.zips,
-        zipsBot: List([]),
-        exp: cursor.exp,
-        orient
-    }
 }
 
 // TODO: shouldn't it orient the other way sometimes??
@@ -347,12 +275,7 @@ export function getSelectBetweenCursor(
         } else if (zipEnd === undefined) {
             // zipsEnd is a subzipper of (i.e. is above) zipsStart
             return { zipsTop: up, zipsBot: zipsStart.reverse(), exp: cursorStart.exp, orient: 'bot' }
-        } else if (
-            zipStart.case === zipEnd.case &&
-            zipStart.dat === zipEnd.dat &&
-            zipStart.kidsLeft.size === zipEnd.kidsLeft.size &&
-            zipStart.kidsRight.size === zipEnd.kidsRight.size
-        ) {
+        } else if (eqZip(zipStart, zipEnd)) {
             return go(zipsStart.shift(), zipsEnd.shift(), up.unshift(zipStart))
         } else {
             return undefined // zips branch in different directions

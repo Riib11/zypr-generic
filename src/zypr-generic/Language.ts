@@ -88,14 +88,26 @@ export function makeHole<Met, Rul, Val>(
 export function makeExpTemplate<Met, Rul, Val>(
     gram: Grammar<Met, Rul, Val>,
     met: Met,
-    rul: Rul
+    rul: Rul,
+    val: Val
 ): Exp<Met, Rul, Val> {
     return verifyExp(gram, {
-        met: met,
-        rul: rul,
-        val: gram.valueDefault(rul),
+        met, rul, val,
         kids: List(gram.kids(rul).map((met) => makeHole(gram, met)))
     })
+}
+
+export function eqExp<Met, Rul, Val>(
+    exp1: Exp<Met, Rul, Val>,
+    exp2: Exp<Met, Rul, Val>
+): boolean {
+    return (
+        exp1.met === exp2.met &&
+        exp1.rul === exp2.rul &&
+        exp1.val === exp2.val &&
+        exp1.kids.zip(exp2.kids).reduceRight((b, [kid1, kid2]) =>
+            b && eqExp(kid1, kid2))
+    )
 }
 
 // zipper step
@@ -133,23 +145,34 @@ export function makeZipTemplate<Met, Rul, Val>(
     gram: Grammar<Met, Rul, Val>,
     met: Met,
     rul: Rul,
+    val: Val,
     i: number
 ): Zip<Met, Rul, Val> {
     return verifyZip(gram, {
-        met: met,
-        rul: rul,
-        val: gram.valueDefault(rul),
+        met, rul, val,
         kidsLeft: List(gram.kids(rul).slice(undefined, i).map((met) => makeHole(gram, met)).reverse()),
         kidsRight: List(gram.kids(rul).slice(i + 1, undefined).map((met) => makeHole(gram, met)))
     })
 }
 
+export function eqZip<Met, Rul, Val>(
+    zip1: Zip<Met, Rul, Val>,
+    zip2: Zip<Met, Rul, Val>
+): boolean {
+    return (
+        zip1.met === zip2.met &&
+        zip1.rul === zip2.rul &&
+        zip1.val === zip2.val &&
+        zip1.kidsLeft.size === zip2.kidsLeft.size &&
+        zip1.kidsRight.size === zip2.kidsRight.size
+    )
+}
+
 export function makeZipTemplates<Met, Rul, Val>(
     gram: Grammar<Met, Rul, Val>,
-    met: Met,
-    rul: Rul
+    met: Met, rul: Rul, val: Val
 ): Zip<Met, Rul, Val>[] {
-    return gram.kids(rul).map((_kidMet, i) => makeZipTemplate(gram, met, rul, i))
+    return gram.kids(rul).map((_kidMet, i) => makeZipTemplate(gram, met, rul, val, i))
 }
 
 // the index of the zip's hole
@@ -161,8 +184,8 @@ export function zipExp<Met, Rul, Val>(
     gram: Grammar<Met, Rul, Val>,
     exp: Exp<Met, Rul, Val>,
     i: number
-): { zip: Zip<Met, Rul, Val>, exp: Exp<Met, Rul, Val> } {
-    verifyRuleKidI(gram, exp.rul, i)
+): { zip: Zip<Met, Rul, Val>, exp: Exp<Met, Rul, Val> } | undefined {
+    if (!isValidRuleKidI(gram, exp.rul, i)) return undefined
     return {
         zip: {
             met: exp.met,
@@ -282,12 +305,19 @@ export function fixSelect<Met, Rul, Val>(
 }
 
 export function enterSelect<Met, Rul, Val>(
-    gram: Grammar<Met, Rul, Val>,
     mode: Mode<Met, Rul, Val>,
     orient: Orient,
 ):
     Select<Met, Rul, Val> {
-    throw new Error("TODO");
+    switch (mode.case) {
+        case 'cursor': return {
+            zipsTop: mode.cursor.zips,
+            zipsBot: List([]),
+            exp: mode.cursor.exp,
+            orient
+        }
+        case 'select': return mode.select
+    }
 }
 
 export function moveSelect<Met, Rul, Val>(
@@ -297,7 +327,7 @@ export function moveSelect<Met, Rul, Val>(
 ):
     Mode<Met, Rul, Val> | undefined {
     const select: Select<Met, Rul, Val> =
-        enterSelect(gram,
+        enterSelect(
             mode,
             ((): Orient => {
                 switch (dir.case) {
@@ -358,19 +388,32 @@ export function moveSelect<Met, Rul, Val>(
             }
         }
         case 'left': {
+            if (select.orient === 'top') return undefined
+
             const selectPar = moveSelect(gram, { case: 'up' }, mode)
-            const zip = select.zipsTop.get(0)
+            const zip = select.zipsBot.get(0)
             if (selectPar === undefined || zip === undefined) return undefined
+
             const i = iZip(zip) - 1
             if (!isValidRuleKidI(gram, zip.rul, i)) return undefined
+
             return moveSelect(gram, { case: 'down', i }, selectPar)
         }
         case 'right': {
+            if (select.orient === 'top') return undefined
+            console.log("=====================================================")
+            console.log("moveSelect right")
+
             const selectPar = moveSelect(gram, { case: 'up' }, mode)
-            const zip = select.zipsTop.get(0)
+            console.log("selectPar", selectPar)
+            const zip = select.zipsBot.get(0)
+            console.log("zip", zip)
             if (selectPar === undefined || zip === undefined) return undefined
+
             const i = iZip(zip) + 1
+            console.log("i", i)
             if (!isValidRuleKidI(gram, zip.rul, i)) return undefined
+
             return moveSelect(gram, { case: 'down', i }, selectPar)
         }
     }

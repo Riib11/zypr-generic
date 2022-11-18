@@ -2,7 +2,7 @@ import { List, Record, RecordOf } from 'immutable'
 import { EndoPart, EndoReadPart } from '../Endo'
 import { Direction } from './Direction'
 import { Query } from './Editor'
-import { Exp, Grammar, makeExpTemplate, makeHole, makeZipTemplates, Zip } from './Language'
+import { enterCursor, Exp, Grammar, makeExpTemplate, makeHole, makeZipTemplates, moveCursor, moveSelect, Zip } from './Language'
 import { ExpNode, formatWrapper, Node } from './Node'
 
 // Env: render environment
@@ -17,17 +17,17 @@ export type Props<Met, Rul, Val, Dat> = {
     grammar: Grammar<Met, Rul, Val>,
     isValidSelect: (select: Select<Met, Rul, Val>) => boolean,
     format: (st: State<Met, Rul, Val, Dat>, query: Query) => Node<Met, Rul, Val, Dat>,
-    interpQueryString: (st: State<Met, Rul, Val, Dat>, str: string) => Action<Met, Rul, Val>[],
-    interpKeyboardCommandEvent: (st: State<Met, Rul, Val, Dat>, event: KeyboardEvent) => Action<Met, Rul, Val> | undefined,
+    interpretQueryString: (st: State<Met, Rul, Val, Dat>, str: string) => Action<Met, Rul, Val>[],
+    interpretKeyboardCommandEvent: (st: State<Met, Rul, Val, Dat>, event: KeyboardEvent) => Action<Met, Rul, Val> | undefined,
     handleAction: (act: Action<Met, Rul, Val>) => EndoReadPart<Props<Met, Rul, Val, Dat>, State<Met, Rul, Val, Dat>>
 }
 
-export function interpQueryAction<Met, Rul, Val, Dat>(
+export function interpretQueryAction<Met, Rul, Val, Dat>(
     backend: Props<Met, Rul, Val, Dat>,
     st: State<Met, Rul, Val, Dat>,
     query: Query
 ): Action<Met, Rul, Val> | undefined {
-    const acts = backend.interpQueryString(st, query.str)
+    const acts = backend.interpretQueryString(st, query.str)
     if (acts.length === 0) return undefined
     return acts[query.i % acts.length]
 }
@@ -37,7 +37,7 @@ export function handleQueryAction<Met, Rul, Val, Dat>(
     st: State<Met, Rul, Val, Dat>,
     query: Query
 ): EndoReadPart<Props<Met, Rul, Val, Dat>, State<Met, Rul, Val, Dat>> | undefined {
-    const act = interpQueryAction(backend, st, query)
+    const act = interpretQueryAction(backend, st, query)
     if (act === undefined) return undefined
     return backend.handleAction(act)
 }
@@ -198,23 +198,30 @@ export function getModeMet<Met, Rul, Val, Dat>(
     }
 }
 
-export function buildInterpQueryString<Met, Rul, Val, Dat>(
+export function buildInterpretQueryString<Met, Rul, Val, Dat>(
     gram: Grammar<Met, Rul, Val>,
-    parse: (met: Met, str: string) => Rul | undefined
+    parse: (met: Met, str: string) => { rul: Rul, val: Val } | undefined
 ) {
     return (
         st: State<Met, Rul, Val, Dat>,
         str: string
     ): Action<Met, Rul, Val>[] => {
+        if (str === "") return []
         const met = getModeMet(gram, st.mode)
-        const rul = parse(met, str)
-        if (rul === undefined) return []
+        const res = parse(met, str)
+        if (res === undefined) return []
+        const { rul, val } = res
         const kids = gram.kids(rul)
-        if (kids.length === 0) return [{
-            case: 'replace',
-            exp: makeExpTemplate(gram, met, rul)
-        }]
-        else return makeZipTemplates(gram, met, rul).map(zip => ({
+        if (kids.length === 0) {
+            switch (st.mode.case) {
+                case 'cursor': return [{
+                    case: 'replace',
+                    exp: makeExpTemplate(gram, met, rul, val)
+                }]
+                case 'select': return []
+            }
+        }
+        else return makeZipTemplates(gram, met, rul, val).map(zip => ({
             case: 'insert',
             zips: List([zip])
         }))
@@ -224,14 +231,14 @@ export function buildInterpQueryString<Met, Rul, Val, Dat>(
 // buildBackend
 
 export function buildBackend<Met, Rul, Val, Dat, Env>(
-    { grammar, isValidSelect, makeInitEnv, formatExp, formatZip, interpQueryString, interpKeyboardCommandEvent, handleAction, initExp }: {
+    { grammar, isValidSelect, makeInitEnv, formatExp, formatZip, interpretQueryString, interpretKeyboardCommandEvent, initExp }: {
         grammar: Grammar<Met, Rul, Val>,
         isValidSelect: Props<Met, Rul, Val, Dat>['isValidSelect'], // is this necessary, or can be abstracted to Language?
         initExp: Exp<Met, Rul, Val>,
         // actions
-        interpQueryString: Props<Met, Rul, Val, Dat>['interpQueryString'],
-        interpKeyboardCommandEvent: Props<Met, Rul, Val, Dat>['interpKeyboardCommandEvent'],
-        handleAction: Props<Met, Rul, Val, Dat>['handleAction'],
+        interpretQueryString: Props<Met, Rul, Val, Dat>['interpretQueryString'],
+        interpretKeyboardCommandEvent: Props<Met, Rul, Val, Dat>['interpretKeyboardCommandEvent'],
+        // handleAction: Props<Met, Rul, Val, Dat>['handleAction'],
         // formatting
         makeInitEnv: (st: State<Met, Rul, Val, Dat>) => Env,
         formatExp: (exp: Exp<Met, Rul, Val>, childing: Childing<Zip<Met, Rul, Val>>) => (env: Env) => ExpNode<Met, Rul, Val, Dat>,
@@ -247,7 +254,7 @@ export function buildBackend<Met, Rul, Val, Dat, Env>(
 
                 const acts: Action<Met, Rul, Val>[] | undefined =
                     query.str.length > 0 ?
-                        interpQueryString(st, query.str) :
+                        interpretQueryString(st, query.str) :
                         undefined
                 const act =
                     acts !== undefined && acts.length > 0 ?
@@ -302,9 +309,94 @@ export function buildBackend<Met, Rul, Val, Dat, Env>(
                             ))(initEnv).node
                 }
             },
-            interpKeyboardCommandEvent,
-            interpQueryString,
-            handleAction
+            interpretKeyboardCommandEvent,
+            interpretQueryString,
+            handleAction: (act: Action<Met, Rul, Val>): EndoReadPart<Props<Met, Rul, Val, Dat>, State<Met, Rul, Val, Dat>> => {
+                switch (act.case) {
+                    case 'replace': {
+                        return updateMode(mode => {
+                            switch (mode.case) {
+                                case 'cursor': return {
+                                    case: 'cursor',
+                                    cursor: {
+                                        zips: mode.cursor.zips,
+                                        exp: act.exp
+                                    }
+                                }
+                                case 'select': return undefined
+                            }
+                        })
+                    }
+                    case 'insert': {
+                        return updateMode((mode): Mode<Met, Rul, Val> => {
+                            switch (mode.case) {
+                                case 'cursor': return {
+                                    case: 'cursor',
+                                    cursor: {
+                                        zips: act.zips.concat(mode.cursor.zips),
+                                        exp: mode.cursor.exp // wrapZipExp(act.zips, mode.cursor.exp)
+                                    }
+                                }
+                                case 'select': return {
+                                    case: 'select',
+                                    select: setZipsBot(mode.select, act.zips)
+                                }
+                            }
+                        })
+                    }
+                    case 'move_cursor': return updateMode((mode) => moveCursor(grammar, act.dir, mode))
+                    case 'move_select': return updateMode((mode) => moveSelect(grammar, act.dir, mode))
+                    case 'delete': {
+                        return updateMode((mode): Mode<Met, Rul, Val> | undefined => {
+                            const met = getModeMet(grammar, mode)
+                            switch (mode.case) {
+                                case 'cursor': {
+                                    return {
+                                        case: 'cursor',
+                                        cursor: {
+                                            zips: mode.cursor.zips,
+                                            exp: makeHole(grammar, met)
+                                        }
+                                    }
+                                }
+                                case 'select': {
+                                    return {
+                                        case: 'cursor',
+                                        cursor: {
+                                            zips: mode.select.zipsTop,
+                                            exp: mode.select.exp
+                                        }
+                                    }
+                                }
+                            }
+                        })
+                    }
+                    case 'escape': return updateMode((mode): Mode<Met, Rul, Val> | undefined => {
+                        return { case: 'cursor', cursor: enterCursor(grammar, mode) }
+                    })
+                    case 'cut': return cut()
+                    case 'copy': return copy()
+                    case 'paste': return paste()
+                    case 'undo': return undo()
+                    case 'redo': return redo()
+                    case 'set_cursor': {
+                        return updateMode((mode): Mode<Met, Rul, Val> => ({
+                            case: 'cursor',
+                            cursor: act.cursor
+                        }))
+                    }
+                    case 'set_select': {
+                        return updateMode((mode): Mode<Met, Rul, Val> => ({
+                            case: 'select',
+                            select: act.select
+                        }))
+                    }
+                    // default: {
+                    //     console.log("action case not implemented by backend:", act.case)
+                    //     return (st) => st // TODO
+                    // }
+                }
+            }
         },
         state: makeState({
             mode: { case: 'cursor', cursor: { zips: List([]), exp: initExp } },

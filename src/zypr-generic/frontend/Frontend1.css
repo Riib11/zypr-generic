@@ -65,7 +65,9 @@
 
 .node-query-invalid {}
 
-.node-query-invalid-string {}
+.node-query-invalid-string {
+    background-color: rgb(255, 69, 69);
+}
 
 .node-query-invalid-exp {}
 
