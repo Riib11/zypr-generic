@@ -49,20 +49,38 @@ export default class Editor<Exp, Zip, Dat>
 
 // buildEditor
 
+export function modifyBackendState<Exp, Zip, Dat>(
+    editor: Editor<Exp, Zip, Dat>,
+    f: EndoPart<Backend.State<Exp, Zip, Dat>>
+): void {
+    const backend = f(editor.state.backend)
+    if (backend !== undefined)
+        editor.setState({
+            backend,
+            query: { str: "", i: 0 }
+        })
+}
+
+export function doAction<Exp, Zip, Dat>(
+    editor: Editor<Exp, Zip, Dat>,
+    act: Backend.Action<Exp, Zip>
+): void {
+    modifyBackendState(
+        editor,
+        editor.props.backend.handleAction(act)
+    )
+}
+
 export function renderEditor<Exp, Zip, Dat>(
-    renderNode: (node: Node<Dat>) => JSX.Element[]
-) {
-    function modifyBackendState(
-        editor: Editor<Exp, Zip, Dat>,
-        f: EndoPart<Backend.State<Exp, Zip, Dat>>
-    ): void {
-        const backend = f(editor.state.backend)
-        if (backend !== undefined)
-            editor.setState({
-                backend,
-                query: { str: "", i: 0 }
-            })
-    }
+    { renderNode }: {
+        renderNode: (
+            node: Node<Exp, Zip, Dat>,
+            editor: Editor<Exp, Zip, Dat>,
+            // doAction: (act: Backend.Action<Exp, Zip>) => void,
+        ) =>
+            JSX.Element[];
+    }) {
+
     return (backend: Backend.Backend<Exp, Zip, Dat>) => {
 
         function render(editor: Editor<Exp, Zip, Dat>) {
@@ -72,7 +90,7 @@ export function renderEditor<Exp, Zip, Dat>(
                 // TODO: onClick={...}
                 <div className="editor">
                     <div className="editor-inner">
-                        {renderNode(node)}
+                        {renderNode(node, editor)}
                     </div>
                 </div>
             ]

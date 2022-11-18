@@ -7,3 +7,5 @@ export const composeEndoPart = <A>(f: EndoPart<A>, g: EndoPart<A>) =>
         let ga = g(a);
         return ga === undefined ? undefined : f(a)
     }
+
+export type EndoReadPart<A, B> = (a: A, b: B) => B | undefined

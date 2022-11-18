@@ -49,7 +49,8 @@
     background-color: rgb(255, 197, 89);
 }
 
-.node-query-replace-exp-old {
+
+.node-query-replace-exp-old>.node {
     background-color: rgb(186, 186, 186);
 }
 
@@ -57,7 +58,7 @@
     background-color: rgb(255, 197, 89);
 }
 
-.node-query-insert-bot {
+.node-query-insert-bot>.node {
     background-color: white;
 }
 
@@ -101,6 +102,10 @@
 
 .punc-space {
     white-space: pre;
+}
+
+.punc-app {
+    color: gray;
 }
 
 .punc-indent {
