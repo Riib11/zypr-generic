@@ -33,20 +33,20 @@ export default function backend(
         zips: List([])
     })()
 
-    const isArg = (childing: Backend.Childing<Zip>) =>
-        childing !== undefined &&
-        childing.rul === 'app' &&
-        childing.kidsLeft.size === 1
+    const isArg = (zipPar: Zip | undefined) =>
+        zipPar !== undefined &&
+        zipPar.rul === 'app' &&
+        zipPar.kidsLeft.size === 1
 
     function nextEnv(
-        childing: Backend.Childing<Zip>,
+        zipPar: Zip | undefined,
         env: Env
     ): Env {
-        if (childing === undefined) return env
-        const env_ = env.update('zips', zips => zips.unshift(childing))
-        switch (childing.rul) {
+        if (zipPar === undefined) return env
+        const env_ = env.update('zips', zips => zips.unshift(zipPar))
+        switch (zipPar.rul) {
             case 'var': return env_
-            case 'app': return env_.update('indentationLevel', (i) => isArg(childing) ? i + 1 : i)
+            case 'app': return env_.update('indentationLevel', (i) => isArg(zipPar) ? i + 1 : i)
             case 'hol': return env_
         }
     }
@@ -72,7 +72,7 @@ export default function backend(
         pre: Pre,
         env: Env,
         kids: ExpNode<Met, Rul, Val, Dat>[],
-        childing: Backend.Childing<Zip>
+        zipPar: Zip | undefined
     ): Node<Met, Rul, Val, Dat> => {
         const select = (() => {
             const cursor1: Backend.Cursor<Met, Rul, Val> = (() => {
@@ -90,25 +90,26 @@ export default function backend(
             dat: {
                 pre,
                 isParenthesized:
-                    (isArg(childing) && pre.rul === 'app') ||
-                    (childing?.rul !== 'app' && pre.rul === 'app'),
+                    (isArg(zipPar) && pre.rul === 'app') ||
+                    (zipPar?.rul !== 'app' && pre.rul === 'app'),
                 indent: ((): number | undefined => {
                     return (
                         (
-                            childing !== undefined &&
-                            childing.rul === 'app' &&
-                            (childing.val as AppVal).indentedArg
+                            zipPar !== undefined &&
+                            zipPar.rul === 'app' &&
+                            (zipPar.val as AppVal).indentedArg
                         )
                             ? env.indentationLevel
                             : undefined)
                 })()
             },
             kids: kids.map(kid => kid.node),
+            // NOTE: will still work when eqZips(st.mode.cursor.zips, env.zips)
             getCursor: () => ({ zips: env.zips, exp }),
             isCursorable:
                 (st.mode.case === 'cursor' && eqZips(st.mode.cursor.zips, env.zips))
                     ? 'same'
-                    : true,
+                    : 'true',
             // getSelect: () => {
             //     const cursor1: Backend.Cursor<Met, Rul, Val> = (() => {
             //         switch (env.st.mode.case) {
@@ -119,19 +120,33 @@ export default function backend(
             //     const cursor2: Backend.Cursor<Met, Rul, Val> = { zips: env.zips, exp }
             //     return getSelectBetweenCursor(cursor1, cursor2)
             // },
-            getSelect: () => select,
-            isSelectableTop: !(select === undefined || select === 'empty') && select.orient === 'top',
-            isSelectableBot: !(select === undefined || select === 'empty') && select.orient === 'bot'
+            getSelect: () =>
+                select === 'empty' ? 'empty' :
+                    select,
+            isSelectable:
+                select === 'empty' ? 'empty' :
+                    select === undefined ? 'false' :
+                        select.orient === 'top' ? 'bot' : 'top'
+            // isSelectableTop:
+            //     select === 'empty' ? 'empty' :
+            //         select !== undefined ? select.orient === 'bot' :
+            //             false,
+            // isSelectableBot:
+            //     select === 'empty' ? 'empty' :
+            //         select !== undefined ? select.orient === 'top' :
+            //             false
+            // !(select === undefined || select === 'empty') && select.orient === 'bot',
+            // isSelectableBot: !(select === undefined || select === 'empty') && select.orient === 'top'
         }
     }
 
     const defined = <A>(a: A | undefined): A => a as A
 
-    const formatExp = (st: Backend.State<Met, Rul, Val, Dat>, exp: Exp, childing: Backend.Childing<Zip>) => (env: Env): ExpNode<Met, Rul, Val, Dat> => {
+    const formatExp = (st: Backend.State<Met, Rul, Val, Dat>, exp: Exp, zipPar: Zip | undefined) => (env: Env): ExpNode<Met, Rul, Val, Dat> => {
         switch (exp.rul) {
             case 'var': return {
                 exp,
-                node: formatPre(st, exp, exp, env, [], childing)
+                node: formatPre(st, exp, exp, env, [], zipPar)
             }
             case 'app': {
                 const kids = exp.kids.map((kid, i) =>
@@ -140,25 +155,25 @@ export default function backend(
                     .toArray()
                 return {
                     exp,
-                    node: formatPre(st, exp, exp, env, kids, childing)
+                    node: formatPre(st, exp, exp, env, kids, zipPar)
                 }
             }
             case 'hol': return {
                 exp,
-                node: formatPre(st, exp, exp, env, [], childing)
+                node: formatPre(st, exp, exp, env, [], zipPar)
             }
         }
     }
 
-    // formatZip: (zips: ListZip<Met,Rul,Val>, childing: Childing<Zip<Met,Rul,Val>>) => (kid: (env: Env<Exp<Met,Rul,Val>, Zip<Met,Rul,Val>, Dat<Met,Rul,Val>>) => ExpNode<Exp,Zip<Met,Rul,Val>,Dat<Met,Rul,Val>>) => (env: Env<Exp<Met,Rul,Val>, Zip<Met,Rul,Val>, Dat<Met,Rul,Val>>) => ExpNode<Exp,Zip<Met,Rul,Val>,Dat<Met,Rul,Val>>,
+    // formatZip: (zips: ListZip<Met,Rul,Val>, zipPar: Childing<Zip<Met,Rul,Val>>) => (kid: (env: Env<Exp<Met,Rul,Val>, Zip<Met,Rul,Val>, Dat<Met,Rul,Val>>) => ExpNode<Exp,Zip<Met,Rul,Val>,Dat<Met,Rul,Val>>) => (env: Env<Exp<Met,Rul,Val>, Zip<Met,Rul,Val>, Dat<Met,Rul,Val>>) => ExpNode<Exp,Zip<Met,Rul,Val>,Dat<Met,Rul,Val>>,
     const formatZip =
-        (st: Backend.State<Met, Rul, Val, Dat>, zips: List<Zip>, childing: Backend.Childing<Zip>) =>
+        (st: Backend.State<Met, Rul, Val, Dat>, zips: List<Zip>, zipPar: Zip | undefined) =>
             (node: ((env: Env) => ExpNode<Met, Rul, Val, Dat>)): (env: Env) => ExpNode<Met, Rul, Val, Dat> => {
                 const zip = zips.get(0)
                 if (zip === undefined) {
                     return node
                 } else {
-                    return formatZip(st, zips.shift(), childing)((env): ExpNode<Met, Rul, Val, Dat> => {
+                    return formatZip(st, zips.shift(), zipPar)((env): ExpNode<Met, Rul, Val, Dat> => {
                         const kid = node(nextEnv(zip, env))
                         const exp = unzipsExp(grammar, List([zip]), kid.exp)
 
@@ -184,7 +199,7 @@ export default function backend(
 
                         return {
                             exp: exp,
-                            node: formatPre(st, exp, zip, env, kids, zips.get(1) ?? childing)
+                            node: formatPre(st, exp, zip, env, kids, zips.get(1) ?? zipPar)
                         }
                     })
                 }

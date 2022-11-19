@@ -19,6 +19,10 @@
     background-color: white;
 }
 
+/* .node-seleable-top > .node-cursor {
+    color: red;
+} */
+
 .node-cursorable:hover {
     box-shadow: 0 0 0 2px gray;
 }

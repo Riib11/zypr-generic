@@ -2,7 +2,7 @@ import { List } from 'immutable';
 import * as React from 'react'
 import { debug, debug_ } from '../../Debug';
 import { EndoPart } from "../../Endo";
-import { Backend } from "../Backend";
+import { Backend, Orient } from "../Backend";
 import { Dat } from "../backend/BackendA";
 import Editor, { doAction, isMouseDown, renderEditor, setMouseDown, setMouseUp } from "../Editor";
 import { Met, Rul, Val, VarVal } from '../language/LanguageAlpha'
@@ -20,105 +20,169 @@ type ExpElementProps = {
     classNames: string[]
 }
 
+type ExpElementHighlightCase = 'cursorable' | 'selectable' | 'selectable_start'
+
 type ExpElementState = {
-    highlight: 'cursorable' | 'selectable-top' | 'selectable-bot' | 'none'
+    // highlight: 'cursorable' | 'selectable-top' | 'selectable-bot' | 'none'
+    highlight: {
+        'cursorable': 'true' | 'false',
+        'selectable': Orient | 'false'
+    }
 }
 
 class ExpElement
     extends React.Component<ExpElementProps, ExpElementState> {
-    // state: ExpElementState = {
-    //     highlight: undefined
-    // }
     constructor(props: ExpElementProps) {
         super(props)
         this.state = {
-            highlight: 'none'
+            highlight: {
+                'cursorable': 'false',
+                'selectable': 'false'
+            }
         }
     }
 
-    enableHighlight(event?: React.MouseEvent): void {
-        if (isMouseDown) {
-            if (this.props.node.isSelectableTop)
-                this.setState({ highlight: 'selectable-top' })
-            else if (this.props.node.isSelectableBot)
-                this.setState({ highlight: 'selectable-bot' })
-            else
-                this.props.expElemPar?.enableHighlight(event)
-        } else {
-            if (this.props.node.isCursorable === 'same')
-                return
-            else if (this.props.node.isCursorable)
-                this.setState({ highlight: 'cursorable' })
-            else
-                this.props.expElemPar?.enableHighlight(event)
+    setHighlightCursorable(cursorable: 'true' | 'false'): void {
+        this.setState({
+            ...this.state,
+            highlight: {
+                ...this.state.highlight,
+                cursorable
+            }
+        })
+    }
+
+    setHighlightSelectable(selectable: Orient | 'false'): void {
+        this.setState({
+            ...this.state,
+            highlight: {
+                ...this.state.highlight,
+                selectable
+            }
+        })
+    }
+
+    enableHighlight(relation: 'kid' | 'par', mode: 'cursorable' | 'selectable', event?: React.MouseEvent): void {
+        switch (mode) {
+            case 'cursorable': {
+                switch (this.props.node.isCursorable) {
+                    case 'same': return
+                    case 'true': this.setHighlightCursorable('true'); return
+                    case 'false': this.props.expElemPar?.enableHighlight('par', mode, event); return
+                }
+            }
+            case 'selectable': {
+                switch (this.props.node.isSelectable) {
+                    case 'empty': return
+                    case 'top': this.setHighlightSelectable('top'); return
+                    case 'bot': this.setHighlightSelectable('bot'); return
+                    case 'false': this.props.expElemPar?.enableHighlight('par', mode, event); return
+                }
+            }
         }
     }
 
-    disableHighlight(event?: React.MouseEvent): void {
-        if (isMouseDown) {
-            if (this.props.node.isSelectableTop)
-                this.setState({ highlight: 'none' })
-            else if (this.props.node.isSelectableBot)
-                this.setState({ highlight: 'none' })
-            // else
-            //     this.props.expElemPar?.disableHighlight(event)
-        } else {
-            // if (this.props.node.isCursorable === 'same')
-            //     return
-            if (this.props.node.isCursorable)
-                this.setState({ highlight: 'none' })
-            // else
-            //     this.props.expElemPar?.disableHighlight(event)
+    disableHighlight(relation: 'kid' | 'par', mode: 'cursorable' | 'selectable', event?: React.MouseEvent): void {
+        switch (mode) {
+            case 'cursorable': {
+                switch (this.props.node.isCursorable) {
+                    case 'same': return
+                    case 'true': this.setHighlightCursorable('false'); return
+                    case 'false': return
+                }
+            }
+            case 'selectable': {
+                if (this.props.node.isCursorable === 'same' && relation === 'par')
+                    this.setHighlightSelectable('top')
+                switch (this.props.node.isSelectable) {
+                    case 'empty': return
+                    case 'top': this.setHighlightSelectable('false'); return
+                    case 'bot': this.setHighlightSelectable('false'); return
+                    case 'false': return
+                }
+            }
         }
-    }
-
-    clearHighlight(event?: React.MouseEvent): void {
-        this.setState({ highlight: 'none' })
     }
 
     render(): JSX.Element {
         const classNames = (() => {
-            switch (this.state.highlight) {
-                case 'cursorable': return this.props.classNames.concat(["node-cursorable"])
-                case 'selectable-top': return this.props.classNames.concat(["node-selectable-top"])
-                case 'selectable-bot': return this.props.classNames.concat(["node-selectable-bot"])
-                case 'none': return this.props.classNames
+            var classNames = this.props.classNames.slice()
+            switch (this.state.highlight.cursorable) {
+                case 'true': classNames.push("node-cursorable"); break
+                case 'false': break
             }
+            switch (this.state.highlight.selectable) {
+                case 'top': classNames.push("node-selectable-top"); break
+                case 'bot': classNames.push("node-selectable-bot"); break
+                case 'false': break
+            }
+            return classNames
         })()
         const expElemPar: ExpElemPar = this
         return (
             <div
                 onMouseEnter={(event) => {
-                    this.props.expElemPar?.disableHighlight(event)
-                    this.enableHighlight(event)
+                    const mode = isMouseDown ? 'selectable' : 'cursorable'
+                    this.props.expElemPar?.disableHighlight('par', mode, event)
+                    this.enableHighlight('kid', mode, event)
                 }}
+
                 onMouseLeave={(event) => {
-                    this.props.expElemPar?.enableHighlight(event)
-                    this.disableHighlight(event)
+                    const mode = isMouseDown ? 'selectable' : 'cursorable'
+                    this.props.expElemPar?.enableHighlight('par', mode, event)
+                    this.disableHighlight('kid', mode, event)
                 }}
+
                 onMouseDown={(event) => {
                     setMouseDown(event)
 
-                    const cursor = this.props.node.getCursor()
-                    if (cursor === undefined) return
-                    doAction(this.props.editor, { case: 'set_cursor', cursor })
+                    switch (this.props.node.isCursorable) {
+                        case 'same': {
+                            // do nothing, don't propogate
+                            event.stopPropagation()
+                            return
+                        }
+                        case 'true': {
+                            // start selection here
+                            this.enableHighlight('kid', 'selectable', event)
+                            // set cursor here
+                            const cursor = this.props.node.getCursor()
+                            if (cursor === undefined)
+                                throw new Error("if isCursorable === 'true', then must have good cursor");
+                            doAction(this.props.editor, { case: 'set_cursor', cursor })
+                            return
+                        }
+                        case 'false': {
+                            // do nothing, propogate
+                        }
+                    }
+                    // const cursor = this.props.node.getCursor()
+                    // if (cursor === undefined)
+                    //     throw new Error("if isCursorable === 'same', then must have good cursor");
+                    // doAction(this.props.editor, { case: 'set_cursor', cursor })
 
-                    // this.enableHighlight(event)
-
-                    event.stopPropagation()
+                    // this.enableHighlight('selectable', event)
+                    // event.stopPropagation()
                 }}
+
                 onMouseUp={(event) => {
                     setMouseUp(event)
-                    this.disableHighlight(event)
-                    // this.clearHighlight(event)
-                    const select = this.props.node.getSelect()
-                    if (select === undefined) return
-                    else if (select === 'empty') event.stopPropagation()
-                    else {
+                    if (this.props.node.isCursorable === 'same') {
+                        // const cursor = this.props.node.getCursor()
+                        // if (cursor === undefined)
+                        //     throw new Error("if isCursorable === 'same', then must have good cursor");
+                        // doAction(this.props.editor, { case: 'set_cursor', cursor })
+                        event.stopPropagation()
+                    } else if (this.props.node.isSelectable !== 'false') {
+                        const select = this.props.node.getSelect()
+                        if (select === undefined || select === 'empty')
+                            throw new Error("if isSelectable !== 'false', then must have good select")
                         doAction(this.props.editor, { case: 'set_select', select })
                         event.stopPropagation()
                     }
+                    // otherwise, propogate upwards
                 }}
+
                 className={classNames.join(" ")}
             >
                 {this.props.elems.map(elem => elem(expElemPar))}

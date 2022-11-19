@@ -78,8 +78,6 @@ export type Clipboard<Met, Rul, Val>
 // bot: the bot of the select can move
 export type Orient = 'top' | 'bot'
 
-export type Childing<Zip> = Zip | undefined
-
 // updateState
 
 export function updateState<Met, Rul, Val, Dat>(f: EndoReadPart<Props<Met, Rul, Val, Dat>, State<Met, Rul, Val, Dat>>): EndoReadPart<Props<Met, Rul, Val, Dat>, State<Met, Rul, Val, Dat>> {
@@ -240,8 +238,8 @@ export function buildBackend<Met, Rul, Val, Dat, Env>(
         // handleAction: Props<Met, Rul, Val, Dat>['handleAction'],
         // formatting
         makeInitEnv: (st: State<Met, Rul, Val, Dat>) => Env,
-        formatExp: (st: State<Met, Rul, Val, Dat>, exp: Exp<Met, Rul, Val>, childing: Childing<Zip<Met, Rul, Val>>) => (env: Env) => ExpNode<Met, Rul, Val, Dat>,
-        formatZip: (st: State<Met, Rul, Val, Dat>, zips: List<Zip<Met, Rul, Val>>, childing: Childing<Zip<Met, Rul, Val>>) => (kid: (env: Env) => ExpNode<Met, Rul, Val, Dat>) => (env: Env) => ExpNode<Met, Rul, Val, Dat>
+        formatExp: (st: State<Met, Rul, Val, Dat>, exp: Exp<Met, Rul, Val>, zipPar: Zip<Met, Rul, Val> | undefined) => (env: Env) => ExpNode<Met, Rul, Val, Dat>,
+        formatZip: (st: State<Met, Rul, Val, Dat>, zips: List<Zip<Met, Rul, Val>>, zipPar: Zip<Met, Rul, Val> | undefined) => (kid: (env: Env) => ExpNode<Met, Rul, Val, Dat>) => (env: Env) => ExpNode<Met, Rul, Val, Dat>
     },
 ): Backend<Met, Rul, Val, Dat> {
     return {
@@ -259,12 +257,12 @@ export function buildBackend<Met, Rul, Val, Dat, Env>(
                     acts !== undefined && acts.length > 0 ?
                         acts[query.i % acts.length] :
                         undefined
-                const childingQuery =
+                const zipParQuery =
                     act !== undefined && act.case === 'insert' ?
                         act.zips.get(0) :
                         undefined
 
-                function formatQueryAround(kid: (env: Env) => ExpNode<Met, Rul, Val, Dat>, childing: Childing<Zip<Met, Rul, Val>>): (env: Env) => ExpNode<Met, Rul, Val, Dat> {
+                function formatQueryAround(kid: (env: Env) => ExpNode<Met, Rul, Val, Dat>, zipPar: Zip<Met, Rul, Val> | undefined): (env: Env) => ExpNode<Met, Rul, Val, Dat> {
                     if (query.str === "")
                         return kid
                     else if (act === undefined) {
@@ -274,10 +272,10 @@ export function buildBackend<Met, Rul, Val, Dat, Env>(
                         switch (act.case) {
                             case 'replace':
                                 return formatWrapper({ case: 'query-replace' },
-                                    [formatExp(st, act.exp, childing), kid])
+                                    [formatExp(st, act.exp, zipPar), kid])
                             case 'insert':
                                 return formatWrapper({ case: 'query-insert-top' },
-                                    [formatZip(st, act.zips, childing)
+                                    [formatZip(st, act.zips, zipPar)
                                         (formatWrapper({ case: 'query-insert-bot' },
                                             [kid]))])
                             default:
@@ -293,7 +291,7 @@ export function buildBackend<Met, Rul, Val, Dat, Env>(
                         return formatZip(st, st.mode.cursor.zips, undefined)
                             (formatQueryAround(
                                 formatWrapper({ case: 'cursor' },
-                                    [formatExp(st, st.mode.cursor.exp, childingQuery ?? st.mode.cursor.zips.get(0))]),
+                                    [formatExp(st, st.mode.cursor.exp, zipParQuery ?? st.mode.cursor.zips.get(0))]),
                                 st.mode.cursor.zips.get(0)
                             ))(initEnv).node
                     }
@@ -301,7 +299,7 @@ export function buildBackend<Met, Rul, Val, Dat, Env>(
                         return formatZip(st, st.mode.select.zipsTop, undefined)
                             (formatQueryAround(
                                 formatWrapper({ case: 'select-top' },
-                                    [formatZip(st, st.mode.select.zipsBot, childingQuery ?? st.mode.select.zipsTop.get(0))
+                                    [formatZip(st, st.mode.select.zipsBot, zipParQuery ?? st.mode.select.zipsTop.get(0))
                                         (formatWrapper({ case: 'select-bot' },
                                             [formatExp(st, st.mode.select.exp, getZipsBot(st.mode.select).get(0))]
                                         ))]

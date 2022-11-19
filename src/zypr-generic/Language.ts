@@ -172,7 +172,11 @@ export function eqZips<Met, Rul, Val>(
     zips1: List<Zip<Met, Rul, Val>>,
     zips2: List<Zip<Met, Rul, Val>>
 ): boolean {
-    return zips1.zip(zips2).reduce((b, [zip1, zip2]) => !b ? !b : eqZip(zip1, zip2))
+    return (
+        zips1.size === zips2.size &&
+        zips1.zip(zips2)
+            .reduce((b, [zip1, zip2]) => b && eqZip(zip1, zip2), true)
+    )
 }
 
 export function makeZipTemplates<Met, Rul, Val>(

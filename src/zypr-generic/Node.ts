@@ -1,4 +1,4 @@
-import { Cursor, Select } from "./Backend"
+import { Cursor, Orient, Select } from "./Backend"
 import { Exp } from "./Language"
 
 export type Node<Met, Rul, Val, Dat>
@@ -10,10 +10,9 @@ export type Node_exp<Met, Rul, Val, Dat> = {
     dat: Dat,
     kids: Node<Met, Rul, Val, Dat>[],
     getCursor: () => Cursor<Met, Rul, Val> | undefined,
-    isCursorable: 'same' | boolean,
+    isCursorable: 'same' | 'true' | 'false',
     getSelect: () => Select<Met, Rul, Val> | 'empty' | undefined,
-    isSelectableTop: boolean,
-    isSelectableBot: boolean
+    isSelectable: Orient | 'empty' | 'false'
 }
 
 export type Node_wrapper<Met, Rul, Val, Dat> = {
