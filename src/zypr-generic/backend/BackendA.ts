@@ -1,4 +1,5 @@
 import { List, Record, RecordOf } from "immutable";
+import { debug } from "../../Debug";
 import { EndoPart, EndoReadPart } from "../../Endo";
 import * as Backend from "../Backend";
 import { eqZip, Grammar, makeHole, makeZipTemplate, makeZipTemplates, moveCursor, moveSelect, unzipsExp, verifyExp, verifyZip, zipExp } from "../Language";
@@ -63,18 +64,6 @@ export default function backend(): Backend.Backend<Met, Rul, Val, Dat> {
         }
     }
 
-    function enterSelect(
-        cursor: Backend.Cursor<Met, Rul, Val>,
-        orient: Backend.Orient
-    ): Backend.Select<Met, Rul, Val> {
-        return {
-            zipsTop: cursor.zips,
-            zipsBot: List([]),
-            exp: cursor.exp,
-            orient
-        }
-    }
-
     const formatPre = (
         exp: Exp,
         pre: Pre,
@@ -89,7 +78,12 @@ export default function backend(): Backend.Backend<Met, Rul, Val, Dat> {
                 (isArg(childing) && pre.rul === 'app') ||
                 (childing?.rul !== 'app' && pre.rul === 'app'),
             // indent: isArg(childing) ? env.indentationLevel : undefined, // always indents
-            indent: isArg(childing) && pre.rul === 'app' && pre.val ? env.indentationLevel : undefined
+            indent: ((): number | undefined => {
+                // return pre.rul === 'app' && (pre.val as AppVal).indentedArg
+                return childing !== undefined && childing.rul === 'app' && (childing.val as AppVal).indentedArg
+                    ? env.indentationLevel
+                    : undefined
+            })()
         },
         kids: kids.map(kid => kid.node),
         getCursor: () => ({ zips: env.zips, exp }),
@@ -219,11 +213,14 @@ export default function backend(): Backend.Backend<Met, Rul, Val, Dat> {
             else if (event.key === 'z') return { case: 'undo' }
         }
         if (event.key === 'Tab') {
+            event.preventDefault()
+            debug(0, "event: Tag")
             switch (st.mode.case) {
                 case 'cursor': {
                     const exp: Exp | undefined = (() => {
                         switch (st.mode.cursor.exp.rul) {
                             case 'app': {
+                                debug(0, "event: Tag, st.mode.cursor.exp.rul: app")
                                 const val = st.mode.cursor.exp.val as AppVal
                                 return { ...st.mode.cursor.exp, dat: { ...val, indentedArg: !val.indentedArg } }
                             }

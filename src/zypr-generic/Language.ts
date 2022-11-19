@@ -401,17 +401,11 @@ export function moveSelect<Met, Rul, Val>(
         }
         case 'right': {
             if (select.orient === 'top') return undefined
-            console.log("=====================================================")
-            console.log("moveSelect right")
-
             const selectPar = moveSelect(gram, { case: 'up' }, mode)
-            console.log("selectPar", selectPar)
             const zip = select.zipsBot.get(0)
-            console.log("zip", zip)
             if (selectPar === undefined || zip === undefined) return undefined
 
             const i = iZip(zip) + 1
-            console.log("i", i)
             if (!isValidRuleKidI(gram, zip.rul, i)) return undefined
 
             return moveSelect(gram, { case: 'down', i }, selectPar)

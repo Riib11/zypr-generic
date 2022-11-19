@@ -103,7 +103,6 @@ export function updateMode<Met, Rul, Val, Dat>(f: EndoPart<Mode<Met, Rul, Val>>)
 
 export function undo<Met, Rul, Val, Dat>(): EndoReadPart<Props<Met, Rul, Val, Dat>, State<Met, Rul, Val, Dat>> {
     return (pr, st) => {
-        console.log("history.size", st.history.size)
         const st_ = st.history.get(0)
         if (st_ === undefined) return undefined
         return st_
@@ -391,10 +390,6 @@ export function buildBackend<Met, Rul, Val, Dat, Env>(
                             select: act.select
                         }))
                     }
-                    // default: {
-                    //     console.log("action case not implemented by backend:", act.case)
-                    //     return (st) => st // TODO
-                    // }
                 }
             }
         },
