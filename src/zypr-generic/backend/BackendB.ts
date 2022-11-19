@@ -2,7 +2,7 @@ import { List, Record, RecordOf } from "immutable";
 import { debug } from "../../Debug";
 import * as Backend from "../Backend";
 import { eqZip, eqZips, Grammar, makeHole, unzipsExp, zipExp } from "../Language";
-import { Pre, Exp, Zip, Met, Rul, Val, AppVal } from "../language/LanguageAlpha";
+import { Pre, Exp, Zip, Met, Rul, Val, AppVal } from "../language/LanguageBeta";
 import { Node, ExpNode } from "../Node";
 
 type Env = RecordOf<{
@@ -33,11 +33,6 @@ export default function backend(
         zips: List([])
     })()
 
-    const isArg = (zipPar: Zip | undefined) =>
-        zipPar !== undefined &&
-        zipPar.rul === 'app' &&
-        zipPar.kidsLeft.size === 1
-
     function nextEnv(
         zipPar: Zip | undefined,
         env: Env
@@ -45,8 +40,10 @@ export default function backend(
         if (zipPar === undefined) return env
         const env_ = env.update('zips', zips => zips.unshift(zipPar))
         switch (zipPar.rul) {
+            case 'bnd': return env_
             case 'var': return env_
             case 'app': return env_.update('indentationLevel', (i) => isArg(zipPar) ? i + 1 : i)
+            case 'lam': return env_.update('indentationLevel', (i) => isBod(zipPar) ? i + 1 : i)
             case 'hol': return env_
         }
     }
@@ -90,7 +87,7 @@ export default function backend(
             dat: {
                 pre,
                 isParenthesized:
-                    (isArg(zipPar) && pre.rul === 'app') ||
+                    ((isArg(zipPar) || isBod(zipPar)) && (pre.rul === 'app' || pre.rul === 'lam')) ||
                     (zipPar?.rul !== 'app' && pre.rul === 'app'),
                 indent: ((): number | undefined => {
                     return (
@@ -142,13 +139,31 @@ export default function backend(
 
     const defined = <A>(a: A | undefined): A => a as A
 
-    const formatExp = (st: Backend.State<Met, Rul, Val, Dat>, exp: Exp, zipPar: Zip | undefined) => (env: Env): ExpNode<Met, Rul, Val, Dat> => {
+    const formatExp = (
+        st: Backend.State<Met, Rul, Val, Dat>,
+        exp: Exp,
+        zipPar: Zip | undefined
+    ) => (env: Env): ExpNode<Met, Rul, Val, Dat> => {
         switch (exp.rul) {
+            case 'bnd': return {
+                exp,
+                node: formatPre(st, exp, exp, env, [], zipPar)
+            }
             case 'var': return {
                 exp,
                 node: formatPre(st, exp, exp, env, [], zipPar)
             }
             case 'app': {
+                const kids = exp.kids.map((kid, i) =>
+                    formatExp(st, kid, defined(zipExp(grammar, exp, i)).zip)
+                        (nextEnv(defined(zipExp(grammar, exp, i)).zip, env)))
+                    .toArray()
+                return {
+                    exp,
+                    node: formatPre(st, exp, exp, env, kids, zipPar)
+                }
+            }
+            case 'lam': {
                 const kids = exp.kids.map((kid, i) =>
                     formatExp(st, kid, defined(zipExp(grammar, exp, i)).zip)
                         (nextEnv(defined(zipExp(grammar, exp, i)).zip, env)))
@@ -208,6 +223,7 @@ export default function backend(
     const interpretQueryString = Backend.buildInterpretQueryString(grammar,
         (met, str): { rul: Rul, val: Val } | undefined => {
             switch (met) {
+                case 'bnd': return { rul: 'bnd', val: { label: str } }
                 case 'exp': {
                     if (str === " ") return { rul: 'app', val: { indentedArg: false } }
                     else return { rul: 'var', val: { label: str } }
@@ -215,34 +231,6 @@ export default function backend(
             }
         }
     )
-
-    // function interpretQueryString(
-    //     st: Backend.State<Met,Rul,Val,Dat>,
-    //     str: string
-    // ): Backend.Action<Met, Rul, Val>[] {
-    //     if (str === "") return []
-    //     else if (str === " ") {
-    //         const acts: Backend.Action<Met, Rul, Val>[] =
-    //             makeZipTemplates(grammar, 'exp', 'app').map((zip) => ({
-    //                 case: 'insert',
-    //                 zips: List([zip])
-    //             }))
-    //         return acts
-    //     } else {
-    //         const acts: Backend.Action<Met, Rul, Val>[] = [
-    //             {
-    //                 case: 'replace',
-    //                 exp: verifyExp(grammar, {
-    //                     met: 'exp',
-    //                     rul: 'var',
-    //                     val: { label: str },
-    //                     kids: List([])
-    //                 })
-    //             }
-    //         ]
-    //         return acts
-    //     }
-    // }
 
     function interpretKeyboardCommandEvent(st: Backend.State<Met, Rul, Val, Dat>, event: KeyboardEvent): Backend.Action<Met, Rul, Val> | undefined {
         if (event.ctrlKey || event.metaKey) {

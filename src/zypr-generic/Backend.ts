@@ -2,7 +2,7 @@ import { List, Record, RecordOf } from 'immutable'
 import { EndoPart, EndoReadPart } from '../Endo'
 import { Direction } from './Direction'
 import { Query } from './Editor'
-import { enterCursor, Exp, Grammar, makeExpTemplate, makeHole, makeZipTemplates, moveCursor, moveSelect, Zip } from './Language'
+import { enterCursor, Exp, Grammar, makeExpTemplate, makeHole, makeZipTemplates, moveCursor, moveSelect, Pre, Zip } from './Language'
 import { ExpNode, formatWrapper, Node } from './Node'
 
 // Env: render environment
@@ -20,6 +20,12 @@ export type Props<Met, Rul, Val, Dat> = {
     interpretQueryString: (st: State<Met, Rul, Val, Dat>, str: string) => Action<Met, Rul, Val>[],
     interpretKeyboardCommandEvent: (st: State<Met, Rul, Val, Dat>, event: KeyboardEvent) => Action<Met, Rul, Val> | undefined,
     handleAction: (act: Action<Met, Rul, Val>) => EndoReadPart<Props<Met, Rul, Val, Dat>, State<Met, Rul, Val, Dat>>
+}
+
+export type Dat<Met, Rul, Val> = {
+    pre: Pre<Met, Rul, Val>,
+    indentation: number | undefined,
+    isParethesized: boolean
 }
 
 export function interpretQueryAction<Met, Rul, Val, Dat>(
@@ -225,10 +231,20 @@ export function buildInterpretQueryString<Met, Rul, Val, Dat>(
     }
 }
 
+type Env<Met, Rul, Val> = RecordOf<{
+    st: State<Met, Rul, Val, Dat>,
+    indentationLevel: number,
+    zips: List<Zip<Met, Rul, Val>>
+}
+
+function formatPre<Met, Rul, Val, Dat>(
+
+)
+
 // buildBackend
 
 export function buildBackend<Met, Rul, Val, Dat, Env>(
-    { grammar, isValidSelect, makeInitEnv, formatExp, formatZip, interpretQueryString, interpretKeyboardCommandEvent, initExp }: {
+    args: {
         grammar: Grammar<Met, Rul, Val>,
         isValidSelect: Props<Met, Rul, Val, Dat>['isValidSelect'], // is this necessary, or can be abstracted to Language?
         initExp: Exp<Met, Rul, Val>,
@@ -244,14 +260,13 @@ export function buildBackend<Met, Rul, Val, Dat, Env>(
 ): Backend<Met, Rul, Val, Dat> {
     return {
         props: {
-            grammar,
-            isValidSelect,
+            ...args,
             format: (st, query) => {
-                const initEnv = makeInitEnv(st)
+                const initEnv = args.makeInitEnv(st)
 
                 const acts: Action<Met, Rul, Val>[] | undefined =
                     query.str.length > 0 ?
-                        interpretQueryString(st, query.str) :
+                        args.interpretQueryString(st, query.str) :
                         undefined
                 const act =
                     acts !== undefined && acts.length > 0 ?
@@ -272,10 +287,10 @@ export function buildBackend<Met, Rul, Val, Dat, Env>(
                         switch (act.case) {
                             case 'replace':
                                 return formatWrapper({ case: 'query-replace' },
-                                    [formatExp(st, act.exp, zipPar), kid])
+                                    [args.formatExp(st, act.exp, zipPar), kid])
                             case 'insert':
                                 return formatWrapper({ case: 'query-insert-top' },
-                                    [formatZip(st, act.zips, zipPar)
+                                    [args.formatZip(st, act.zips, zipPar)
                                         (formatWrapper({ case: 'query-insert-bot' },
                                             [kid]))])
                             default:
@@ -288,28 +303,27 @@ export function buildBackend<Met, Rul, Val, Dat, Env>(
                 switch (st.mode.case) {
                     case 'cursor': {
                         st.mode.cursor.zips.get(0)
-                        return formatZip(st, st.mode.cursor.zips, undefined)
+                        return args.formatZip(st, st.mode.cursor.zips, undefined)
                             (formatQueryAround(
                                 formatWrapper({ case: 'cursor' },
-                                    [formatExp(st, st.mode.cursor.exp, zipParQuery ?? st.mode.cursor.zips.get(0))]),
+                                    [args.formatExp(st, st.mode.cursor.exp, zipParQuery ?? st.mode.cursor.zips.get(0))]),
                                 st.mode.cursor.zips.get(0)
                             ))(initEnv).node
                     }
                     case 'select':
-                        return formatZip(st, st.mode.select.zipsTop, undefined)
+                        return args.formatZip(st, st.mode.select.zipsTop, undefined)
                             (formatQueryAround(
                                 formatWrapper({ case: 'select-top' },
-                                    [formatZip(st, st.mode.select.zipsBot, zipParQuery ?? st.mode.select.zipsTop.get(0))
+                                    [args.formatZip(st, st.mode.select.zipsBot, zipParQuery ?? st.mode.select.zipsTop.get(0))
                                         (formatWrapper({ case: 'select-bot' },
-                                            [formatExp(st, st.mode.select.exp, getZipsBot(st.mode.select).get(0))]
+                                            [args.formatExp(st, st.mode.select.exp, getZipsBot(st.mode.select).get(0))]
                                         ))]
                                 ),
                                 st.mode.select.zipsTop.get(0)
                             ))(initEnv).node
                 }
             },
-            interpretKeyboardCommandEvent,
-            interpretQueryString,
+
             handleAction: (act: Action<Met, Rul, Val>): EndoReadPart<Props<Met, Rul, Val, Dat>, State<Met, Rul, Val, Dat>> => {
                 switch (act.case) {
                     case 'replace': {
@@ -343,18 +357,18 @@ export function buildBackend<Met, Rul, Val, Dat, Env>(
                             }
                         })
                     }
-                    case 'move_cursor': return updateMode((mode) => moveCursor(grammar, act.dir, mode))
-                    case 'move_select': return updateMode((mode) => moveSelect(grammar, act.dir, mode))
+                    case 'move_cursor': return updateMode((mode) => moveCursor(args.grammar, act.dir, mode))
+                    case 'move_select': return updateMode((mode) => moveSelect(args.grammar, act.dir, mode))
                     case 'delete': {
                         return updateMode((mode): Mode<Met, Rul, Val> | undefined => {
-                            const met = getModeMet(grammar, mode)
+                            const met = getModeMet(args.grammar, mode)
                             switch (mode.case) {
                                 case 'cursor': {
                                     return {
                                         case: 'cursor',
                                         cursor: {
                                             zips: mode.cursor.zips,
-                                            exp: makeHole(grammar, met)
+                                            exp: makeHole(args.grammar, met)
                                         }
                                     }
                                 }
@@ -371,7 +385,7 @@ export function buildBackend<Met, Rul, Val, Dat, Env>(
                         })
                     }
                     case 'escape': return updateMode((mode): Mode<Met, Rul, Val> | undefined => {
-                        return { case: 'cursor', cursor: enterCursor(grammar, mode) }
+                        return { case: 'cursor', cursor: enterCursor(args.grammar, mode) }
                     })
                     case 'cut': return cut()
                     case 'copy': return copy()
@@ -393,8 +407,9 @@ export function buildBackend<Met, Rul, Val, Dat, Env>(
                 }
             }
         },
+
         state: makeState({
-            mode: { case: 'cursor', cursor: { zips: List([]), exp: initExp } },
+            mode: { case: 'cursor', cursor: { zips: List([]), exp: args.initExp } },
             clipboard: undefined,
             history: List([]),
             future: List([])

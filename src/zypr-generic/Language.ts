@@ -9,21 +9,27 @@ export type Grammar<Met, Rul, Val> =
         valueDefault: (rul: Rul) => Val, // this rule has this default value
         kids: (rul: Rul) => Met[], // this rule has these children metas
         holeRule: (met: Met) => Rul, // this meta can be produced by this hole rule
+        // whether the exp at a zips is parethesized
+        isParenthesized: (zips: List<Zip<Met, Rul, Val>>, exp: Exp<Met, Rul, Val>) => boolean,
+        isIndentable: (zips: List<Zip<Met, Rul, Val>>, exp: Exp<Met, Rul, Val>) => boolean,
     }
 
 export function buildGrammar<Met extends string, Rul extends string, Val>(
-    { rules, valueDefault, kids, holeRule }: {
+    args: {
         rules: { [met in Met]: Rul[] },
         valueDefault: { [rul in Rul]: Val },
         kids: { [rul in Rul]: Met[] },
-        holeRule: { [met in Met]: Rul }
+        holeRule: { [met in Met]: Rul },
+        isParenthesized: Grammar<Met, Rul, Val>['isParenthesized'],
+        isIndentable: Grammar<Met, Rul, Val>['isIndentable'],
     },
 ): Grammar<Met, Rul, Val> {
     return {
-        rules: (met) => rules[met],
-        valueDefault: (rul) => valueDefault[rul],
-        kids: (rul) => kids[rul],
-        holeRule: (met) => holeRule[met]
+        ...args,
+        rules: (met) => args.rules[met],
+        valueDefault: (rul) => args.valueDefault[rul],
+        kids: (rul) => args.kids[rul],
+        holeRule: (met) => args.holeRule[met],
     }
 }
 
