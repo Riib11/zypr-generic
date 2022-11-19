@@ -1,15 +1,27 @@
 import { Cursor, Select } from "./Backend"
 import { Exp } from "./Language"
 
-export type Node<Met, Rul, Val, Dat> =
-    {
-        case: 'exp',
-        dat: Dat,
-        kids: Node<Met, Rul, Val, Dat>[],
-        getCursor: () => Cursor<Met, Rul, Val> | undefined,
-        getSelect: () => Select<Met, Rul, Val> | undefined,
-    } |
-    { case: 'wrapper', wrapper: Wrapper, dat: Dat, kids: Node<Met, Rul, Val, Dat>[] }
+export type Node<Met, Rul, Val, Dat>
+    = Node_exp<Met, Rul, Val, Dat>
+    | Node_wrapper<Met, Rul, Val, Dat>
+
+export type Node_exp<Met, Rul, Val, Dat> = {
+    case: 'exp',
+    dat: Dat,
+    kids: Node<Met, Rul, Val, Dat>[],
+    getCursor: () => Cursor<Met, Rul, Val> | undefined,
+    isCursorable: 'same' | boolean,
+    getSelect: () => Select<Met, Rul, Val> | 'empty' | undefined,
+    isSelectableTop: boolean,
+    isSelectableBot: boolean
+}
+
+export type Node_wrapper<Met, Rul, Val, Dat> = {
+    case: 'wrapper',
+    wrapper: Wrapper,
+    dat: Dat,
+    kids: Node<Met, Rul, Val, Dat>[]
+}
 
 export type Wrapper
     = { case: 'cursor' }

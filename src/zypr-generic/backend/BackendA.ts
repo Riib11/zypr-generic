@@ -1,8 +1,7 @@
 import { List, Record, RecordOf } from "immutable";
 import { debug } from "../../Debug";
-import { EndoPart, EndoReadPart } from "../../Endo";
 import * as Backend from "../Backend";
-import { eqZip, Grammar, makeHole, makeZipTemplate, makeZipTemplates, moveCursor, moveSelect, unzipsExp, verifyExp, verifyZip, zipExp } from "../Language";
+import { eqZip, eqZips, Grammar, makeHole, unzipsExp, zipExp } from "../Language";
 import { Pre, Exp, Zip, Met, Rul, Val, AppVal, grammar } from "../language/LanguageAlpha";
 import { Node, ExpNode } from "../Node";
 
@@ -18,7 +17,10 @@ export type Dat = {
     isParenthesized: boolean,
 }
 
-export default function backend(): Backend.Backend<Met, Rul, Val, Dat> {
+export default function backend(
+    { grammar }:
+        { grammar: Grammar<Met, Rul, Val>; }
+): Backend.Backend<Met, Rul, Val, Dat> {
 
     function isValidSelect(select: Backend.Select<Met, Rul, Val>): boolean {
         // TODO: modify when there are lambdas with ids
@@ -65,29 +67,14 @@ export default function backend(): Backend.Backend<Met, Rul, Val, Dat> {
     }
 
     const formatPre = (
+        st: Backend.State<Met, Rul, Val, Dat>,
         exp: Exp,
         pre: Pre,
         env: Env,
         kids: ExpNode<Met, Rul, Val, Dat>[],
         childing: Backend.Childing<Zip>
-    ): Node<Met, Rul, Val, Dat> => ({
-        case: 'exp',
-        dat: {
-            pre,
-            isParenthesized:
-                (isArg(childing) && pre.rul === 'app') ||
-                (childing?.rul !== 'app' && pre.rul === 'app'),
-            // indent: isArg(childing) ? env.indentationLevel : undefined, // always indents
-            indent: ((): number | undefined => {
-                // return pre.rul === 'app' && (pre.val as AppVal).indentedArg
-                return childing !== undefined && childing.rul === 'app' && (childing.val as AppVal).indentedArg
-                    ? env.indentationLevel
-                    : undefined
-            })()
-        },
-        kids: kids.map(kid => kid.node),
-        getCursor: () => ({ zips: env.zips, exp }),
-        getSelect: () => {
+    ): Node<Met, Rul, Val, Dat> => {
+        const select = (() => {
             const cursor1: Backend.Cursor<Met, Rul, Val> = (() => {
                 switch (env.st.mode.case) {
                     case 'cursor': return env.st.mode.cursor
@@ -95,58 +82,96 @@ export default function backend(): Backend.Backend<Met, Rul, Val, Dat> {
                 }
             })()
             const cursor2: Backend.Cursor<Met, Rul, Val> = { zips: env.zips, exp }
-            // find the selection between zips, if there is one
             return getSelectBetweenCursor(cursor1, cursor2)
+        })()
+
+        return {
+            case: 'exp',
+            dat: {
+                pre,
+                isParenthesized:
+                    (isArg(childing) && pre.rul === 'app') ||
+                    (childing?.rul !== 'app' && pre.rul === 'app'),
+                indent: ((): number | undefined => {
+                    return (
+                        (
+                            childing !== undefined &&
+                            childing.rul === 'app' &&
+                            (childing.val as AppVal).indentedArg
+                        )
+                            ? env.indentationLevel
+                            : undefined)
+                })()
+            },
+            kids: kids.map(kid => kid.node),
+            getCursor: () => ({ zips: env.zips, exp }),
+            isCursorable:
+                (st.mode.case === 'cursor' && eqZips(st.mode.cursor.zips, env.zips))
+                    ? 'same'
+                    : true,
+            // getSelect: () => {
+            //     const cursor1: Backend.Cursor<Met, Rul, Val> = (() => {
+            //         switch (env.st.mode.case) {
+            //             case 'cursor': return env.st.mode.cursor
+            //             case 'select': return escapeSelect(env.st.mode.select)
+            //         }
+            //     })()
+            //     const cursor2: Backend.Cursor<Met, Rul, Val> = { zips: env.zips, exp }
+            //     return getSelectBetweenCursor(cursor1, cursor2)
+            // },
+            getSelect: () => select,
+            isSelectableTop: !(select === undefined || select === 'empty') && select.orient === 'top',
+            isSelectableBot: !(select === undefined || select === 'empty') && select.orient === 'bot'
         }
-    })
+    }
 
     const defined = <A>(a: A | undefined): A => a as A
 
-    const formatExp = (exp: Exp, childing: Backend.Childing<Zip>) => (env: Env): ExpNode<Met, Rul, Val, Dat> => {
+    const formatExp = (st: Backend.State<Met, Rul, Val, Dat>, exp: Exp, childing: Backend.Childing<Zip>) => (env: Env): ExpNode<Met, Rul, Val, Dat> => {
         switch (exp.rul) {
             case 'var': return {
                 exp,
-                node: formatPre(exp, exp, env, [], childing)
+                node: formatPre(st, exp, exp, env, [], childing)
             }
             case 'app': {
                 const kids = exp.kids.map((kid, i) =>
-                    formatExp(kid, defined(zipExp(grammar, exp, i)).zip)
+                    formatExp(st, kid, defined(zipExp(grammar, exp, i)).zip)
                         (nextEnv(defined(zipExp(grammar, exp, i)).zip, env)))
                     .toArray()
                 return {
                     exp,
-                    node: formatPre(exp, exp, env, kids, childing)
+                    node: formatPre(st, exp, exp, env, kids, childing)
                 }
             }
             case 'hol': return {
                 exp,
-                node: formatPre(exp, exp, env, [], childing)
+                node: formatPre(st, exp, exp, env, [], childing)
             }
         }
     }
 
     // formatZip: (zips: ListZip<Met,Rul,Val>, childing: Childing<Zip<Met,Rul,Val>>) => (kid: (env: Env<Exp<Met,Rul,Val>, Zip<Met,Rul,Val>, Dat<Met,Rul,Val>>) => ExpNode<Exp,Zip<Met,Rul,Val>,Dat<Met,Rul,Val>>) => (env: Env<Exp<Met,Rul,Val>, Zip<Met,Rul,Val>, Dat<Met,Rul,Val>>) => ExpNode<Exp,Zip<Met,Rul,Val>,Dat<Met,Rul,Val>>,
     const formatZip =
-        (zips: List<Zip>, childing: Backend.Childing<Zip>) =>
+        (st: Backend.State<Met, Rul, Val, Dat>, zips: List<Zip>, childing: Backend.Childing<Zip>) =>
             (node: ((env: Env) => ExpNode<Met, Rul, Val, Dat>)): (env: Env) => ExpNode<Met, Rul, Val, Dat> => {
                 const zip = zips.get(0)
                 if (zip === undefined) {
                     return node
                 } else {
-                    return formatZip(zips.shift(), childing)((env): ExpNode<Met, Rul, Val, Dat> => {
+                    return formatZip(st, zips.shift(), childing)((env): ExpNode<Met, Rul, Val, Dat> => {
                         const kid = node(nextEnv(zip, env))
                         const exp = unzipsExp(grammar, List([zip]), kid.exp)
 
                         // is reversed
                         const kidsLeft: ExpNode<Met, Rul, Val, Dat>[] =
                             zip.kidsLeft.reverse().map((kid, i) =>
-                                formatExp(kid, defined(zipExp(grammar, exp, i)).zip)
+                                formatExp(st, kid, defined(zipExp(grammar, exp, i)).zip)
                                     (nextEnv(defined(zipExp(grammar, exp, i)).zip, env))
                             ).toArray()
 
                         const kidsRight: ExpNode<Met, Rul, Val, Dat>[] =
                             zip.kidsRight.map((kid, i) =>
-                                formatExp(kid, defined(zipExp(grammar, exp, i + zip.kidsLeft.size + 1)).zip)
+                                formatExp(st, kid, defined(zipExp(grammar, exp, i + zip.kidsLeft.size + 1)).zip)
                                     (nextEnv(defined(zipExp(grammar, exp, i + zip.kidsLeft.size + 1)).zip, env))
                             ).toArray()
 
@@ -159,7 +184,7 @@ export default function backend(): Backend.Backend<Met, Rul, Val, Dat> {
 
                         return {
                             exp: exp,
-                            node: formatPre(exp, zip, env, kids, zips.get(1) ?? childing)
+                            node: formatPre(st, exp, zip, env, kids, zips.get(1) ?? childing)
                         }
                     })
                 }
@@ -259,13 +284,14 @@ export default function backend(): Backend.Backend<Met, Rul, Val, Dat> {
 export function getSelectBetweenCursor(
     cursorStart: Backend.Cursor<Met, Rul, Val>,
     cursorEnd: Backend.Cursor<Met, Rul, Val>
-): Backend.Select<Met, Rul, Val> | undefined {
+): Backend.Select<Met, Rul, Val> | 'empty' | undefined {
     function go(zipsStart: List<Zip>, zipsEnd: List<Zip>, up: List<Zip>):
-        Backend.Select<Met, Rul, Val> | undefined {
+        Backend.Select<Met, Rul, Val> | 'empty' | undefined {
         const zipStart = zipsStart.get(0)
         const zipEnd = zipsEnd.get(0)
         if (zipStart === undefined && zipEnd === undefined) {
-            return undefined // same zips
+            // same zips
+            return 'empty'
         } else if (zipStart === undefined) {
             // zipsStart is a subzipper of (i.e. is above) zipsEnd
             return { zipsTop: up, zipsBot: zipsEnd, exp: cursorEnd.exp, orient: 'top' }
@@ -273,9 +299,11 @@ export function getSelectBetweenCursor(
             // zipsEnd is a subzipper of (i.e. is above) zipsStart
             return { zipsTop: up, zipsBot: zipsStart.reverse(), exp: cursorStart.exp, orient: 'bot' }
         } else if (eqZip(zipStart, zipEnd)) {
+            // zips match, so recurse further
             return go(zipsStart.shift(), zipsEnd.shift(), up.unshift(zipStart))
         } else {
-            return undefined // zips branch in different directions
+            // zips branch into different kids
+            return undefined
         }
     }
     return go(cursorStart.zips.reverse(), cursorEnd.zips.reverse(), List([]))

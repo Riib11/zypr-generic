@@ -1,8 +1,13 @@
-import React from "react";
-import { EndoPart, EndoReadPart } from "../Endo";
+import React, { MouseEvent } from "react"
+import { EndoReadPart } from "../Endo"
 import * as Backend from './Backend'
-import { Node } from "./Node";
-import interactQuery from "./QueryInteraction";
+import { Node } from "./Node"
+import interactQuery from "./QueryInteraction"
+import './Editor.css'
+
+export var isMouseDown: boolean = false
+export function setMouseDown(event: MouseEvent) { isMouseDown = event.button === 0 ? true : isMouseDown }
+export function setMouseUp(event: MouseEvent) { isMouseDown = event.button === 0 ? false : isMouseDown }
 
 export type Props<Met, Rul, Val, Dat> = {
     backend: Backend.Props<Met, Rul, Val, Dat>,
@@ -78,7 +83,7 @@ export function renderEditor<Met, Rul, Val, Dat>(
             editor: Editor<Met, Rul, Val, Dat>,
             // doAction: (act: Backend.Action<Met,Rul,Val>) => void,
         ) =>
-            JSX.Element[];
+            JSX.Element[]
     }) {
 
     return (backend: Backend.Backend<Met, Rul, Val, Dat>) => {
@@ -88,7 +93,10 @@ export function renderEditor<Met, Rul, Val, Dat>(
                 (editor.state.backend, editor.state.query)
             return [
                 // TODO: onClick={...}
-                <div className="editor">
+                <div className="editor"
+                    onMouseDown={(event) => setMouseDown(event)}
+                    onMouseUp={(event) => setMouseUp(event)}
+                >
                     <div className="editor-inner">
                         {renderNode(node, editor)}
                     </div>

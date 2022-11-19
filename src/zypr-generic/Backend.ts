@@ -240,8 +240,8 @@ export function buildBackend<Met, Rul, Val, Dat, Env>(
         // handleAction: Props<Met, Rul, Val, Dat>['handleAction'],
         // formatting
         makeInitEnv: (st: State<Met, Rul, Val, Dat>) => Env,
-        formatExp: (exp: Exp<Met, Rul, Val>, childing: Childing<Zip<Met, Rul, Val>>) => (env: Env) => ExpNode<Met, Rul, Val, Dat>,
-        formatZip: (zips: List<Zip<Met, Rul, Val>>, childing: Childing<Zip<Met, Rul, Val>>) => (kid: (env: Env) => ExpNode<Met, Rul, Val, Dat>) => (env: Env) => ExpNode<Met, Rul, Val, Dat>
+        formatExp: (st: State<Met, Rul, Val, Dat>, exp: Exp<Met, Rul, Val>, childing: Childing<Zip<Met, Rul, Val>>) => (env: Env) => ExpNode<Met, Rul, Val, Dat>,
+        formatZip: (st: State<Met, Rul, Val, Dat>, zips: List<Zip<Met, Rul, Val>>, childing: Childing<Zip<Met, Rul, Val>>) => (kid: (env: Env) => ExpNode<Met, Rul, Val, Dat>) => (env: Env) => ExpNode<Met, Rul, Val, Dat>
     },
 ): Backend<Met, Rul, Val, Dat> {
     return {
@@ -265,17 +265,19 @@ export function buildBackend<Met, Rul, Val, Dat, Env>(
                         undefined
 
                 function formatQueryAround(kid: (env: Env) => ExpNode<Met, Rul, Val, Dat>, childing: Childing<Zip<Met, Rul, Val>>): (env: Env) => ExpNode<Met, Rul, Val, Dat> {
-                    if (act === undefined) {
+                    if (query.str === "")
+                        return kid
+                    else if (act === undefined) {
                         return formatWrapper({ case: 'query-invalid', string: query.str },
                             [kid])
                     } else {
                         switch (act.case) {
                             case 'replace':
                                 return formatWrapper({ case: 'query-replace' },
-                                    [formatExp(act.exp, childing), kid])
+                                    [formatExp(st, act.exp, childing), kid])
                             case 'insert':
                                 return formatWrapper({ case: 'query-insert-top' },
-                                    [formatZip(act.zips, childing)
+                                    [formatZip(st, act.zips, childing)
                                         (formatWrapper({ case: 'query-insert-bot' },
                                             [kid]))])
                             default:
@@ -288,20 +290,20 @@ export function buildBackend<Met, Rul, Val, Dat, Env>(
                 switch (st.mode.case) {
                     case 'cursor': {
                         st.mode.cursor.zips.get(0)
-                        return formatZip(st.mode.cursor.zips, undefined)
+                        return formatZip(st, st.mode.cursor.zips, undefined)
                             (formatQueryAround(
                                 formatWrapper({ case: 'cursor' },
-                                    [formatExp(st.mode.cursor.exp, childingQuery ?? st.mode.cursor.zips.get(0))]),
+                                    [formatExp(st, st.mode.cursor.exp, childingQuery ?? st.mode.cursor.zips.get(0))]),
                                 st.mode.cursor.zips.get(0)
                             ))(initEnv).node
                     }
                     case 'select':
-                        return formatZip(st.mode.select.zipsTop, undefined)
+                        return formatZip(st, st.mode.select.zipsTop, undefined)
                             (formatQueryAround(
                                 formatWrapper({ case: 'select-top' },
-                                    [formatZip(st.mode.select.zipsBot, childingQuery ?? st.mode.select.zipsTop.get(0))
+                                    [formatZip(st, st.mode.select.zipsBot, childingQuery ?? st.mode.select.zipsTop.get(0))
                                         (formatWrapper({ case: 'select-bot' },
-                                            [formatExp(st.mode.select.exp, getZipsBot(st.mode.select).get(0))]
+                                            [formatExp(st, st.mode.select.exp, getZipsBot(st.mode.select).get(0))]
                                         ))]
                                 ),
                                 st.mode.select.zipsTop.get(0)

@@ -168,6 +168,13 @@ export function eqZip<Met, Rul, Val>(
     )
 }
 
+export function eqZips<Met, Rul, Val>(
+    zips1: List<Zip<Met, Rul, Val>>,
+    zips2: List<Zip<Met, Rul, Val>>
+): boolean {
+    return zips1.zip(zips2).reduce((b, [zip1, zip2]) => !b ? !b : eqZip(zip1, zip2))
+}
+
 export function makeZipTemplates<Met, Rul, Val>(
     gram: Grammar<Met, Rul, Val>,
     met: Met, rul: Rul, val: Val
@@ -277,7 +284,7 @@ export function moveCursor<Met, Rul, Val>(
             const zip = cursor.zips.get(0)
             if (cursorPar === undefined || zip === undefined) return undefined
             const i = iZip(zip) - 1
-            verifyRuleKidI(gram, zip.rul, i)
+            if (!isValidRuleKidI(gram, zip.rul, i)) return undefined
             return moveCursor(gram, { case: 'down', i }, cursorPar)
         }
         case 'right': {
@@ -285,7 +292,7 @@ export function moveCursor<Met, Rul, Val>(
             const zip = cursor.zips.get(0)
             if (cursorPar === undefined || zip === undefined) return undefined
             const i = iZip(zip) + 1
-            verifyRuleKidI(gram, zip.rul, i)
+            if (!isValidRuleKidI(gram, zip.rul, i)) return undefined
             return moveCursor(gram, { case: 'down', i }, cursorPar)
         }
     }
