@@ -1,4 +1,3 @@
-import { List } from "immutable"
 import * as Language from "../Language"
 
 export type Pre = Language.Pre<Met, Rul, Val>
