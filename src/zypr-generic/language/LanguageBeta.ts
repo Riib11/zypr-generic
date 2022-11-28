@@ -33,7 +33,7 @@ export default function grammar(): Language.Grammar<Met, Rul, Val> {
     return Language.buildGrammar<Met, Rul, Val>({
         rules: {
             'bnd': ['bnd'],
-            'exp': ['var', 'app', 'hol']
+            'exp': ['var', 'app', 'lam', 'hol']
         },
         valueDefault: {
             // bnd

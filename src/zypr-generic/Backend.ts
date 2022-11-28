@@ -17,6 +17,7 @@ export type Props<Met, Rul, Val, Dat> = {
     grammar: Grammar<Met, Rul, Val>,
     isValidSelect: (select: Select<Met, Rul, Val>) => boolean,
     format: (st: State<Met, Rul, Val, Dat>, query: Query) => Node<Met, Rul, Val, Dat>,
+    // TODO: extend with completions
     interpretQueryString: (st: State<Met, Rul, Val, Dat>, str: string) => Action<Met, Rul, Val>[],
     interpretKeyboardCommandEvent: (st: State<Met, Rul, Val, Dat>, event: KeyboardEvent) => Action<Met, Rul, Val> | undefined,
     handleAction: (act: Action<Met, Rul, Val>) => EndoReadPart<Props<Met, Rul, Val, Dat>, State<Met, Rul, Val, Dat>>
