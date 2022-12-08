@@ -47,6 +47,7 @@ export default function backend(language: Language<Met, Rul, Val>): Backend.Back
         }
     }
 
+    // TODO: bug when escapeSelect from orientation 'bot', the cursor stays at top
     function escapeSelect(
         select: Backend.Select<Met, Rul, Val>
     ): Backend.Cursor<Met, Rul, Val> {
@@ -83,7 +84,6 @@ export default function backend(language: Language<Met, Rul, Val>): Backend.Back
         })()
 
         return {
-            case: 'exp',
             dat: {
                 pre,
                 isParenthesized:
@@ -107,33 +107,14 @@ export default function backend(language: Language<Met, Rul, Val>): Backend.Back
                 (st.mode.case === 'cursor' && eqZips(st.mode.cursor.zips, env.zips))
                     ? 'same'
                     : 'true',
-            // getSelect: () => {
-            //     const cursor1: Backend.Cursor<Met, Rul, Val> = (() => {
-            //         switch (env.st.mode.case) {
-            //             case 'cursor': return env.st.mode.cursor
-            //             case 'select': return escapeSelect(env.st.mode.select)
-            //         }
-            //     })()
-            //     const cursor2: Backend.Cursor<Met, Rul, Val> = { zips: env.zips, exp }
-            //     return getSelectBetweenCursor(cursor1, cursor2)
-            // },
             getSelect: () =>
                 select === 'empty' ? 'empty' :
                     select,
             isSelectable:
                 select === 'empty' ? 'empty' :
                     select === undefined ? 'false' :
-                        select.orient === 'top' ? 'bot' : 'top'
-            // isSelectableTop:
-            //     select === 'empty' ? 'empty' :
-            //         select !== undefined ? select.orient === 'bot' :
-            //             false,
-            // isSelectableBot:
-            //     select === 'empty' ? 'empty' :
-            //         select !== undefined ? select.orient === 'top' :
-            //             false
-            // !(select === undefined || select === 'empty') && select.orient === 'bot',
-            // isSelectableBot: !(select === undefined || select === 'empty') && select.orient === 'top'
+                        select.orient === 'top' ? 'bot' : 'top',
+            style: undefined
         }
     }
 

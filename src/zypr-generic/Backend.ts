@@ -3,7 +3,7 @@ import { EndoPart, EndoReadPart } from '../Endo'
 import { Direction } from './Direction'
 import { Query } from './Editor'
 import { enterCursor, Exp, Grammar, Language, makeExpTemplate, makeHole, makeZipTemplates, moveCursor, moveSelect, Pre, Zip } from './Language'
-import { ExpNode, formatWrapper, Node } from './Node'
+import { ExpNode, Node, NodeStyle } from './Node'
 
 // Env: render environment
 // Dat: render data
@@ -232,6 +232,14 @@ export function buildInterpretQueryString<Met, Rul, Val, Dat>(
     }
 }
 
+function formatNodeStyle<Met, Rul, Val, Dat, Env>
+    (
+        style: NodeStyle<Met, Rul, Val, Dat>,
+        expNode: (env: Env) => ExpNode<Met, Rul, Val, Dat>
+    ): (env: Env) => ExpNode<Met, Rul, Val, Dat> {
+    throw new Error("TODO");
+}
+
 type Env<Met, Rul, Val, Dat> = RecordOf<{
     st: State<Met, Rul, Val, Dat>,
     indentationLevel: number,
@@ -281,18 +289,16 @@ export function buildBackend<Met, Rul, Val, Dat, Env>(
                     if (query.str === "")
                         return kid
                     else if (act === undefined) {
-                        return formatWrapper({ case: 'query-invalid', string: query.str },
-                            [kid])
+                        return formatNodeStyle({ case: 'query-invalid', string: query.str }, kid)
                     } else {
                         switch (act.case) {
                             case 'replace':
-                                return formatWrapper({ case: 'query-replace' },
-                                    [args.formatExp(st, act.exp, zipPar), kid])
+                                return formatNodeStyle({ case: 'query-replace-new' }, kid)
                             case 'insert':
-                                return formatWrapper({ case: 'query-insert-top' },
-                                    [args.formatZip(st, act.zips, zipPar)
-                                        (formatWrapper({ case: 'query-insert-bot' },
-                                            [kid]))])
+                                return formatNodeStyle({ case: 'query-insert-top' },
+                                    args.formatZip(st, act.zips, zipPar)
+                                        (formatNodeStyle({ case: 'query-insert-bot' },
+                                            kid)))
                             default:
                                 // TODO: special display for other kinds of actions?
                                 return kid
@@ -305,19 +311,19 @@ export function buildBackend<Met, Rul, Val, Dat, Env>(
                         st.mode.cursor.zips.get(0)
                         return args.formatZip(st, st.mode.cursor.zips, undefined)
                             (formatQueryAround(
-                                formatWrapper({ case: 'cursor' },
-                                    [args.formatExp(st, st.mode.cursor.exp, zipParQuery ?? st.mode.cursor.zips.get(0))]),
+                                formatNodeStyle({ case: 'cursor' },
+                                    args.formatExp(st, st.mode.cursor.exp, zipParQuery ?? st.mode.cursor.zips.get(0))),
                                 st.mode.cursor.zips.get(0)
                             ))(initEnv).node
                     }
                     case 'select':
                         return args.formatZip(st, st.mode.select.zipsTop, undefined)
                             (formatQueryAround(
-                                formatWrapper({ case: 'select-top' },
-                                    [args.formatZip(st, getZipsBot(st.mode.select), zipParQuery ?? st.mode.select.zipsTop.get(0))
-                                        (formatWrapper({ case: 'select-bot' },
-                                            [args.formatExp(st, st.mode.select.exp, getZipsBot(st.mode.select).get(0))]
-                                        ))]
+                                formatNodeStyle({ case: 'select-top' },
+                                    args.formatZip(st, getZipsBot(st.mode.select), zipParQuery ?? st.mode.select.zipsTop.get(0))
+                                        (formatNodeStyle({ case: 'select-bot' },
+                                            args.formatExp(st, st.mode.select.exp, getZipsBot(st.mode.select).get(0))
+                                        ))
                                 ),
                                 st.mode.select.zipsTop.get(0)
                             ))(initEnv).node
