@@ -80,9 +80,13 @@ export default function language(): Language.Language<Met, Rul, Val> {
   function isParenthesized(zips: List<Zip>, exp: Exp): boolean {
     let zip = zips.get(0)
     if (zip === undefined) return false
-    if (exp.rul === 'app' && !isApl(zip)) return true
-    if (exp.rul === 'lam' && !isBod(zip)) return true
-    return false
+    switch (exp.rul) {
+      case 'bnd': return false
+      case 'var': return false
+      case 'app': return !isApl(zip)
+      case 'lam': return !isBod(zip)
+      case 'hol': return false
+    }
   }
 
   function isIndentable(zips: List<Zip>, exp: Exp): boolean {
