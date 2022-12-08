@@ -280,10 +280,6 @@ export function buildBackend<Met, Rul, Val, Dat, Env>(
             format: (st, query) => {
                 const initEnv = args.makeInitEnv(st)
 
-                function flatMapApply<A, B>(...fs: ((x: A) => B[])[]): (x: A) => B[] {
-                    return x => fs.flatMap((f) => f(x))
-                }
-
                 const acts: Action<Met, Rul, Val>[] | undefined =
                     query.str.length > 0 ?
                         args.interpretQueryString(st, query.str) :

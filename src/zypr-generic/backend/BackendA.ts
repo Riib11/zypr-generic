@@ -100,7 +100,7 @@ export default function backend(language: Language<Met, Rul, Val>): Backend.Back
                             : undefined)
                 })()
             },
-            kids: kids.map(kid => kid.nodes).flat(),
+            kids: kids.map(kid => kid.nodes),
             // NOTE: will still work when eqZips(st.mode.cursor.zips, env.zips)
             getCursor: () => ({ zips: env.zips, exp }),
             isCursorable:

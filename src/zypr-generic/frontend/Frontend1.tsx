@@ -295,12 +295,12 @@ export default function frontend(backend: Backend<Met, Rul, Val, Dat>) {
                         renderExp_(node,
                             paren([
                                 // apl
-                                renderAux(go(node.kids[0]), classNames.concat(["node-exp-app-apl"])),
+                                node.kids[0].map(kid => renderAux(go(kid), classNames.concat(["node-exp-app-apl"]))),
                                 // TODO: <div className="node punc punc-space"> </div>,
                                 // arg
-                                (_) => <div className="node punc punc-app">•</div>,
-                                renderAux(go(node.kids[1]), classNames.concat(["node-exp-app-arg"]))
-                            ]),
+                                [(_: ExpElemPar) => <div className="node punc punc-app">•</div>],
+                                node.kids[1].map(kid => renderAux(go(kid), classNames.concat(["node-exp-app-arg"]))),
+                            ].flat()),
                             ["node-exp-app"]
                         )
                     ]))

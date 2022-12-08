@@ -1,14 +1,9 @@
-import { List } from "immutable"
 import { Cursor, Orient, Select } from "./Backend"
-import { Exp, Zip } from "./Language"
-
-// export type Node<Met, Rul, Val, Dat>
-//     = Node_exp<Met, Rul, Val, Dat>
-//     | Node_wrapper<Met, Rul, Val, Dat>
+import { Exp } from "./Language"
 
 export type Node<Met, Rul, Val, Dat> = {
     dat: Dat,
-    kids: Node<Met, Rul, Val, Dat>[],
+    kids: Node<Met, Rul, Val, Dat>[][],
     getCursor: () => Cursor<Met, Rul, Val> | undefined,
     isCursorable: 'same' | 'true' | 'false',
     getSelect: () => Select<Met, Rul, Val> | 'empty' | undefined,
