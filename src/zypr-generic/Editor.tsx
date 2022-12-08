@@ -4,6 +4,7 @@ import * as Backend from './Backend'
 import { Node } from "./Node"
 import interactQuery from "./QueryInteraction"
 import './Editor.css'
+import { debug } from "../Debug"
 
 export var isMouseDown: boolean = false
 export function setMouseDown(event: MouseEvent) { isMouseDown = event.button === 0 ? true : isMouseDown }
@@ -106,16 +107,15 @@ export function renderEditor<Met, Rul, Val, Dat>(
         }
 
         function handleKeyboard(editor: Editor<Met, Rul, Val, Dat>, event: KeyboardEvent): void {
-            // console.log(event.key)
-
             // try to interpret as keyboard command
             {
-                const act = editor.props.backend.interpretKeyboardCommandEvent
-                    (editor.state.backend, event)
+                const act = editor.props.backend.interpretKeyboardCommandEvent(editor.state.backend, event)
                 if (act !== undefined) {
+                    debug(0, "keyboard command handled: " + event.key + " ==> " + act.case)
                     event.preventDefault()
-                    modifyBackendState(editor,
-                        editor.props.backend.handleAction(act))
+                    modifyBackendState(editor, editor.props.backend.handleAction(act))
+                } else {
+                    debug(0, "keyboard command aborted: " + event.key + " ==> !!")
                 }
             }
 

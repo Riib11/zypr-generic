@@ -18,11 +18,11 @@ export type VarVal = { label: string }
 export type AppVal = { indentedArg: boolean }
 export type HolVal = {}
 
-function isApl(zip: Zip): boolean {
+export function isApl(zip: Zip): boolean {
     return zip.rul === 'app' && zip.kidsLeft.size == 0
 }
 
-function isArg(zip: Zip): boolean {
+export function isArg(zip: Zip): boolean {
     return zip.rul === 'app' && zip.kidsLeft.size == 1
 }
 

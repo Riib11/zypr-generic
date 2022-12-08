@@ -51,7 +51,6 @@ export default function backend(language: Language<Met, Rul, Val>): Backend.Back
     function escapeSelect(
         select: Backend.Select<Met, Rul, Val>
     ): Backend.Cursor<Met, Rul, Val> {
-        console.log("escapeSelect; select.orient = " + select.orient)
         switch (select.orient) {
             case 'top': return {
                 zips: select.zipsTop,
@@ -93,7 +92,7 @@ export default function backend(language: Language<Met, Rul, Val>): Backend.Back
                     return (
                         (
                             zipPar !== undefined &&
-                            zipPar.rul === 'app' &&
+                            isArg(zipPar) &&
                             (zipPar.val as AppVal).indentedArg
                         )
                             ? env.indentationLevel
@@ -187,7 +186,7 @@ export default function backend(language: Language<Met, Rul, Val>): Backend.Back
         (met, str): { rul: Rul, val: Val } | undefined => {
             switch (met) {
                 case 'exp': {
-                    if (str === " ") return { rul: 'app', val: { indentedArg: false } }
+                    if (str === " ") return { rul: 'app', val: language.grammar.valueDefault('app') }
                     else return { rul: 'var', val: { label: str } }
                 }
             }
@@ -232,21 +231,21 @@ export default function backend(language: Language<Met, Rul, Val>): Backend.Back
         }
         if (event.key === 'Tab') {
             event.preventDefault()
-            debug(0, "event: Tag")
+            debug(0, "event: Tab")
             switch (st.mode.case) {
                 case 'cursor': {
                     const exp: Exp | undefined = (() => {
                         switch (st.mode.cursor.exp.rul) {
                             case 'app': {
-                                debug(0, "event: Tag, st.mode.cursor.exp.rul: app")
                                 const val = st.mode.cursor.exp.val as AppVal
+                                debug(0, "indenting at an app, where current indentArg = " + val.indentedArg)
                                 return { ...st.mode.cursor.exp, dat: { ...val, indentedArg: !val.indentedArg } }
                             }
                             default: return undefined
                         }
                     })()
-                    if (exp !== undefined) return { case: 'replace', exp: st.mode.cursor.exp }
-                    else return undefined
+                    if (exp === undefined) return undefined
+                    return { case: 'replace', exp }
                 }
                 case 'select': {
                     // TODO: indent everything in selection

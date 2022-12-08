@@ -243,7 +243,7 @@ export default function frontend(backend: Backend<Met, Rul, Val, Dat>) {
             const indent =
                 (elems: ((expElemPar: ExpElemPar) => JSX.Element)[]):
                     ((expElemPar: ExpElemPar) => JSX.Element)[] => {
-                    if (node.dat.indent !== undefined) {
+                    if (node.dat.indent !== undefined && node.dat.indent > 0) {
                         let str = ""
                         for (var i = 0; i < node.dat.indent; i++) str += "  "
                         return ([
@@ -283,9 +283,7 @@ export default function frontend(backend: Backend<Met, Rul, Val, Dat>) {
                 case 'var':
                     return indent(query([
                         renderExp_(node,
-                            paren([
-                                renderAux([(_) => <span>{(node.dat.pre.val as VarVal).label}</span>], classNames.concat(["node-exp-var-label"]))
-                            ]),
+                            [renderAux([(_) => <span>{(node.dat.pre.val as VarVal).label}</span>], classNames.concat(["node-exp-var-label"]))],
                             classNames.concat(["node-exp-var"])
                         )
                     ]))
@@ -308,9 +306,7 @@ export default function frontend(backend: Backend<Met, Rul, Val, Dat>) {
                 case 'hol':
                     return indent(query([
                         renderExp_(node,
-                            paren([
-                                (_: ExpElemPar) => <span>?</span>
-                            ]),
+                            [(_: ExpElemPar) => <span>?</span>],
                             ["node-exp-hol"]
                         )
                     ]))
