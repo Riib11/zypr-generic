@@ -158,14 +158,30 @@
 }
 
 .punc-app {
-  color: gray;
+  color: rgb(170, 170, 170);
 }
 
 .punc-mapsto {
   display: inline-block;
   color: gray;
-  padding-left: 0.2rem;
-  padding-right: 0.2rem;
+  padding: 0 0.5rem;
+}
+
+.punc-let {
+  font-style: italic;
+  color: gray;
+  padding-right: 0.5rem;
+}
+
+.punc-assign {
+  color: gray;
+  padding: 0 0.5rem;
+}
+
+.punc-in {
+  font-style: italic;
+  color: gray;
+  padding: 0 0.5rem;
 }
 
 .punc-indent {

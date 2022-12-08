@@ -16,29 +16,39 @@ export type Rul
   | 'var'
   | 'app'
   | 'lam'
+  | 'let'
   | 'hol'
 
-export type Val = BndVal | VarVal | AppVal | LamVal | HolVal
+export type Val = BndVal | VarVal | AppVal | LamVal | LetVal | HolVal
 export type BndVal = { label: string }
 export type VarVal = { label: string }
 export type AppVal = { indentedArg: boolean }
 export type LamVal = { indentedBod: boolean }
+export type LetVal = { indentedImp: boolean, indentedBod: boolean }
 export type HolVal = {}
 
-export function isApl(zip: Zip | undefined): boolean {
+export function isAppApl(zip: Zip | undefined): boolean {
   return zip !== undefined && zip.rul === 'app' && zip.kidsLeft.size === 0
 }
 
-export function isArg(zip: Zip | undefined): boolean {
+export function isAppArg(zip: Zip | undefined): boolean {
   return zip !== undefined && zip.rul === 'app' && zip.kidsLeft.size === 1
 }
 
-export function isBnd(zip: Zip | undefined): boolean {
+export function isLamBnd(zip: Zip | undefined): boolean {
   return zip !== undefined && zip.rul === 'lam' && zip.kidsLeft.size === 0
 }
 
-export function isBod(zip: Zip | undefined): boolean {
+export function isLamBod(zip: Zip | undefined): boolean {
   return zip !== undefined && zip.rul === 'lam' && zip.kidsLeft.size === 1
+}
+
+export function isLetImp(zip: Zip | undefined): boolean {
+  return zip !== undefined && zip.rul === 'let' && zip.kidsLeft.size === 1
+}
+
+export function isLetBod(zip: Zip | undefined): boolean {
+  return zip !== undefined && zip.rul === 'let' && zip.kidsLeft.size === 2
 }
 
 export function prettyPre(pre: Pre): string {
@@ -47,6 +57,7 @@ export function prettyPre(pre: Pre): string {
     case 'var': return "\"" + (pre.val as VarVal).label + "\""
     case 'app': return "(_ _)"
     case 'lam': return "(_ ↦ _)"
+    case 'let': return "(let _ = _ in _)"
     case 'hol': return "?"
   }
 }
@@ -62,6 +73,7 @@ export default function language(): Language.Language<Met, Rul, Val> {
       'var': { label: "" } as Val,
       'app': { indentedArg: false } as Val,
       'lam': { indentedBod: false } as Val,
+      'let': { indentedImp: false, indentedBod: false } as Val,
       'hol': {} as Val
     }[rul]),
     kids: (rul) => ({
@@ -69,6 +81,7 @@ export default function language(): Language.Language<Met, Rul, Val> {
       'var': [] as Met[],
       'app': ['exp', 'exp'] as Met[],
       'lam': ['bnd', 'exp'] as Met[],
+      'let': ['bnd', 'exp', 'exp'] as Met[],
       'hol': [] as Met[]
     }[rul]),
     holeRule: (met) => ({
@@ -83,8 +96,9 @@ export default function language(): Language.Language<Met, Rul, Val> {
     switch (exp.rul) {
       case 'bnd': return false
       case 'var': return false
-      case 'app': return !isApl(zip)
-      case 'lam': return !isBod(zip)
+      case 'app': return !(isAppApl(zip) || isLetImp(zip) || isLetBod(zip))
+      case 'lam': return !(isLamBod(zip) || isLetImp(zip) || isLetBod(zip))
+      case 'let': return isAppArg(zip)
       case 'hol': return false
     }
   }
@@ -92,7 +106,7 @@ export default function language(): Language.Language<Met, Rul, Val> {
   function isIndentable(zips: List<Zip>, exp: Exp): boolean {
     let zip = zips.get(0)
     if (zip === undefined) return false
-    if (isArg(zip) || isBod(zip)) return true
+    if (isAppArg(zip) || isLamBod(zip)) return true
     return false
   }
 

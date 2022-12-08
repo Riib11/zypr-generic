@@ -297,10 +297,7 @@ export default function frontend(backend: Backend<Met, Rul, Val, Dat>) {
           return indent(query([
             renderExp_(node,
               paren([
-                // apl
                 node.kids[0].map(kid => renderAux(go(kid), classNames.concat(["node-exp-app-apl"]))),
-                // TODO: <div className="node punc punc-space"> </div>,
-                // arg
                 [(_: ExpElemPar) => <div className="node punc punc-app">•</div>],
                 node.kids[1].map(kid => renderAux(go(kid), classNames.concat(["node-exp-app-arg"]))),
               ].flat()),
@@ -312,12 +309,24 @@ export default function frontend(backend: Backend<Met, Rul, Val, Dat>) {
           return indent(query([
             renderExp_(node,
               paren([
-                // bnd
                 node.kids[0].map(kid => renderAux(go(kid), classNames.concat(["node-exp-lam-bnd"]))),
-                // mapsto
                 [(_: ExpElemPar) => <div className="node punc punc-mapsto">↦</div>],
-                // bod
                 node.kids[1].map(kid => renderAux(go(kid), classNames.concat(["node-exp-lam-bod"]))),
+              ].flat()),
+              ["node-exp-lam"]
+            )
+          ]))
+
+        case 'let':
+          return indent(query([
+            renderExp_(node,
+              paren([
+                [(_: ExpElemPar) => <div className="node punc punc-let">let</div>],
+                node.kids[0].map(kid => renderAux(go(kid), classNames.concat(["node-exp-let-bnd"]))),
+                [(_: ExpElemPar) => <div className="node punc punc-assign">=</div>],
+                node.kids[1].map(kid => renderAux(go(kid), classNames.concat(["node-exp-let-imp"]))),
+                [(_: ExpElemPar) => <div className="node punc punc-in">in</div>],
+                node.kids[2].map(kid => renderAux(go(kid), classNames.concat(["node-exp-let-bod"]))),
               ].flat()),
               ["node-exp-lam"]
             )

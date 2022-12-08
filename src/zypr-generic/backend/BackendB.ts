@@ -2,7 +2,7 @@ import { List, Record, RecordOf } from "immutable";
 import { debug } from "../../Debug";
 import * as Backend from "../Backend";
 import { eqZip, eqZips, Grammar, Language, makeHole, unzipsExp, zipExp } from "../Language";
-import { Pre, Exp, Zip, Met, Rul, Val, AppVal, isArg, isBod, prettyPre, BndVal } from "../language/LanguageBeta";
+import { Pre, Exp, Zip, Met, Rul, Val, AppVal, isAppArg, isLamBod, prettyPre, BndVal, isLetImp, isLetBod, LamVal, LetVal } from "../language/LanguageBeta";
 import { Node, ExpNode } from "../Node";
 import interactString from "../../StringInteraction";
 
@@ -46,8 +46,9 @@ export default function backend(language: Language<Met, Rul, Val>): Backend.Back
     switch (zipPar.rul) {
       case 'bnd': return env_
       case 'var': return env_
-      case 'app': return env_.update('indentationLevel', (i) => isArg(zipPar) ? i + 1 : i)
-      case 'lam': return env_.update('indentationLevel', (i) => isBod(zipPar) ? i + 1 : i)
+      case 'app': return env_.update('indentationLevel', (i) => isAppArg(zipPar) ? i + 1 : i)
+      case 'lam': return env_.update('indentationLevel', (i) => isLamBod(zipPar) ? i + 1 : i)
+      case 'let': return env_.update('indentationLevel', (i) => isLetImp(zipPar) || isLetBod(zipPar) ? i + 1 : i)
       case 'hol': return env_
     }
   }
@@ -95,7 +96,7 @@ export default function backend(language: Language<Met, Rul, Val>): Backend.Back
           return (
             (
               zipPar !== undefined &&
-              isArg(zipPar) &&
+              isAppArg(zipPar) &&
               (zipPar.val as AppVal).indentedArg
             )
               ? env.indentationLevel
@@ -179,6 +180,7 @@ export default function backend(language: Language<Met, Rul, Val>): Backend.Back
         case 'exp': {
           if (str === " ") return { rul: 'app', val: language.grammar.valueDefault('app') }
           else if (str === "fun") return { rul: 'lam', val: language.grammar.valueDefault('lam') }
+          else if (str === "let") return { rul: 'let', val: language.grammar.valueDefault('let') }
           else return { rul: 'var', val: { label: str } }
         }
       }
@@ -234,12 +236,24 @@ export default function backend(language: Language<Met, Rul, Val>): Backend.Back
         case 'cursor': {
           const exp: Exp | undefined = (() => {
             switch (st.mode.cursor.exp.rul) {
+              case 'bnd': return undefined
+              case 'var': return undefined
               case 'app': {
                 const val = st.mode.cursor.exp.val as AppVal
                 debug(0, "indenting at an app, where current indentArg = " + val.indentedArg)
                 return { ...st.mode.cursor.exp, dat: { ...val, indentedArg: !val.indentedArg } }
               }
-              default: return undefined
+              case 'lam': {
+                const val = st.mode.cursor.exp.val as LamVal
+                debug(0, "indenting at a lam, where current indentArg = " + val.indentedBod)
+                return { ...st.mode.cursor.exp, dat: { ...val, indentedBod: !val.indentedBod } }
+              }
+              case 'let': {
+                const val = st.mode.cursor.exp.val as LetVal
+                debug(0, "indenting at a lam, where current indentArg = " + val.indentedBod)
+                return { ...st.mode.cursor.exp, dat: { ...val, indentedBod: !val.indentedBod } }
+              }
+              case 'hol': return undefined
             }
           })()
           if (exp === undefined) return undefined
