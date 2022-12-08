@@ -2,8 +2,9 @@ import { List, Record, RecordOf } from "immutable";
 import { debug } from "../../Debug";
 import * as Backend from "../Backend";
 import { eqZip, eqZips, Grammar, Language, makeHole, unzipsExp, zipExp } from "../Language";
-import { Pre, Exp, Zip, Met, Rul, Val, AppVal, isArg, isBod, prettyPre } from "../language/LanguageBeta";
+import { Pre, Exp, Zip, Met, Rul, Val, AppVal, isArg, isBod, prettyPre, BndVal } from "../language/LanguageBeta";
 import { Node, ExpNode } from "../Node";
+import interactString from "../../StringInteraction";
 
 type Env = RecordOf<{
   st: Backend.State<Met, Rul, Val, Dat>,
@@ -213,6 +214,12 @@ export default function backend(language: Language<Met, Rul, Val>): Backend.Back
   // }
 
   function interpretKeyboardCommandEvent(st: Backend.State<Met, Rul, Val, Dat>, event: KeyboardEvent): Backend.Action<Met, Rul, Val> | undefined {
+    if (st.mode.case === 'cursor' && st.mode.cursor.exp.met === 'bnd') {
+      const label = interactString(event, (st.mode.cursor.exp.val as BndVal).label)
+      if (label === undefined) return undefined
+      return { case: 'replace', exp: { ...st.mode.cursor.exp, val: { label } } }
+    }
+
     if (event.ctrlKey || event.metaKey) {
       if (event.key === 'c') return { case: 'copy' }
       else if (event.key === 'x') return { case: 'cut' }

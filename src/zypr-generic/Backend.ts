@@ -1,4 +1,5 @@
 import { List, Record, RecordOf } from 'immutable'
+import { debug } from '../Debug'
 import { EndoPart, EndoReadPart } from '../Endo'
 import { Direction } from './Direction'
 import { Query } from './Editor'
@@ -363,6 +364,7 @@ export function buildBackend<Met, Rul, Val, Dat, Env>(
             handleAction: (act: Action<Met, Rul, Val>): EndoReadPart<Props<Met, Rul, Val, Dat>, State<Met, Rul, Val, Dat>> => {
                 switch (act.case) {
                     case 'replace': {
+                        debug(0, "handleAction: replace")
                         return updateMode(mode => {
                             switch (mode.case) {
                                 case 'cursor': return {
@@ -372,6 +374,7 @@ export function buildBackend<Met, Rul, Val, Dat, Env>(
                                         exp: act.exp
                                     }
                                 }
+                                // can't replace a select with an exp
                                 case 'select': return undefined
                             }
                         })

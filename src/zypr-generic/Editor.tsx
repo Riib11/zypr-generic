@@ -114,6 +114,7 @@ export function renderEditor<Met, Rul, Val, Dat>(
                     debug(0, "keyboard command handled: " + event.key + " ==> " + act.case)
                     event.preventDefault()
                     modifyBackendState(editor, editor.props.backend.handleAction(act))
+                    return
                 } else {
                     debug(0, "keyboard command aborted: " + event.key + " ==> !!")
                 }
