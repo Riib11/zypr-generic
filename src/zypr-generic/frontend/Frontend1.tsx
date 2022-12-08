@@ -247,8 +247,8 @@ export default function frontend(backend: Backend<Met, Rul, Val, Dat>) {
                         let str = ""
                         for (var i = 0; i < node.dat.indent; i++) str += "  "
                         return ([
-                            (_: ExpElemPar) => <br className="punc punc-newline" />,
-                            (_: ExpElemPar) => <div className="punc punc-indent">{str}</div>
+                            (_: ExpElemPar) => <br className="node punc punc-newline" />,
+                            (_: ExpElemPar) => <div className="node punc punc-indent">{str}</div>
                         ]).concat(elems)
                     }
                     return elems
@@ -271,9 +271,9 @@ export default function frontend(backend: Backend<Met, Rul, Val, Dat>) {
                     ((expElemPar: ExpElemPar) => JSX.Element)[] => {
                     if (node.dat.isParenthesized)
                         return ([] as ((expElemPar: ExpElemPar) => JSX.Element)[]).concat(
-                            [(_: ExpElemPar) => <div className="punc punc-paren punc-paren-left">(</div>],
+                            [(_: ExpElemPar) => <div className="node punc punc-paren punc-paren-left">(</div>],
                             elems,
-                            [(_: ExpElemPar) => <div className="punc punc-paren punc-paren-right">)</div>]
+                            [(_: ExpElemPar) => <div className="node punc punc-paren punc-paren-right">)</div>]
                         )
                     return elems
                 }
@@ -296,9 +296,9 @@ export default function frontend(backend: Backend<Met, Rul, Val, Dat>) {
                             paren([
                                 // apl
                                 renderAux(go(node.kids[0]), classNames.concat(["node-exp-app-apl"])),
-                                // TODO: <div className="punc punc-space"> </div>,
+                                // TODO: <div className="node punc punc-space"> </div>,
                                 // arg
-                                (_) => <div className="punc punc-app">•</div>,
+                                (_) => <div className="node punc punc-app">•</div>,
                                 renderAux(go(node.kids[1]), classNames.concat(["node-exp-app-arg"]))
                             ]),
                             ["node-exp-app"]

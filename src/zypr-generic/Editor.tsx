@@ -89,7 +89,7 @@ export function renderEditor<Met, Rul, Val, Dat>(
     return (backend: Backend.Backend<Met, Rul, Val, Dat>) => {
 
         function render(editor: Editor<Met, Rul, Val, Dat>) {
-            const node = editor.props.backend.format
+            const nodes = editor.props.backend.format
                 (editor.state.backend, editor.state.query)
             return [
                 // TODO: onClick={...}
@@ -98,7 +98,7 @@ export function renderEditor<Met, Rul, Val, Dat>(
                     onMouseUp={(event) => setMouseUp(event)}
                 >
                     <div className="editor-inner">
-                        {renderNode(node, editor)}
+                        {nodes.map(node => renderNode(node, editor))}
                     </div>
                 </div>
             ]

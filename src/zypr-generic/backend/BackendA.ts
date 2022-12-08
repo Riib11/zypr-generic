@@ -100,7 +100,7 @@ export default function backend(language: Language<Met, Rul, Val>): Backend.Back
                             : undefined)
                 })()
             },
-            kids: kids.map(kid => kid.node),
+            kids: kids.map(kid => kid.nodes).flat(),
             // NOTE: will still work when eqZips(st.mode.cursor.zips, env.zips)
             getCursor: () => ({ zips: env.zips, exp }),
             isCursorable:
@@ -124,7 +124,7 @@ export default function backend(language: Language<Met, Rul, Val>): Backend.Back
         switch (exp.rul) {
             case 'var': return {
                 exp,
-                node: formatPre(st, exp, exp, env, [], zipPar)
+                nodes: [formatPre(st, exp, exp, env, [], zipPar)]
             }
             case 'app': {
                 const kids = exp.kids.map((kid, i) =>
@@ -133,12 +133,12 @@ export default function backend(language: Language<Met, Rul, Val>): Backend.Back
                     .toArray()
                 return {
                     exp,
-                    node: formatPre(st, exp, exp, env, kids, zipPar)
+                    nodes: [formatPre(st, exp, exp, env, kids, zipPar)]
                 }
             }
             case 'hol': return {
                 exp,
-                node: formatPre(st, exp, exp, env, [], zipPar)
+                nodes: [formatPre(st, exp, exp, env, [], zipPar)]
             }
         }
     }
@@ -177,7 +177,7 @@ export default function backend(language: Language<Met, Rul, Val>): Backend.Back
 
                         return {
                             exp: exp,
-                            node: formatPre(st, exp, zip, env, kids, zips.get(1) ?? zipPar)
+                            nodes: [formatPre(st, exp, zip, env, kids, zips.get(1) ?? zipPar)]
                         }
                     })
                 }

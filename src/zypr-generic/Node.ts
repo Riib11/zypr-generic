@@ -22,11 +22,12 @@ export type NodeStyle<Met, Rul, Val, Dat>
     | { case: 'select-bot' }
     | { case: 'query-insert-top' }
     | { case: 'query-insert-bot' }
-    | { case: 'query-replace', expNode: ExpNode<Met, Rul, Val, Dat> }
+    | { case: 'query-replace-new' }
+    | { case: 'query-replace-old' }
     | { case: 'query-invalid', string: string }
 
 export type ExpNode<Met, Rul, Val, Dat> =
     {
         exp: Exp<Met, Rul, Val>,
-        node: Node<Met, Rul, Val, Dat>
+        nodes: Node<Met, Rul, Val, Dat>[]
     }

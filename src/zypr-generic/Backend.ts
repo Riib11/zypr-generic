@@ -16,7 +16,7 @@ export type Backend<Met, Rul, Val, Dat> = {
 export type Props<Met, Rul, Val, Dat> = {
     language: Language<Met, Rul, Val>,
     isValidSelect: (select: Select<Met, Rul, Val>) => boolean,
-    format: (st: State<Met, Rul, Val, Dat>, query: Query) => Node<Met, Rul, Val, Dat>,
+    format: (st: State<Met, Rul, Val, Dat>, query: Query) => Node<Met, Rul, Val, Dat>[],
     // TODO: extend with completions
     interpretQueryString: (st: State<Met, Rul, Val, Dat>, str: string) => Action<Met, Rul, Val>[],
     interpretKeyboardCommandEvent: (st: State<Met, Rul, Val, Dat>, event: KeyboardEvent) => Action<Met, Rul, Val> | undefined,
@@ -235,11 +235,19 @@ export function buildInterpretQueryString<Met, Rul, Val, Dat>(
 function formatNodeStyle<Met, Rul, Val, Dat, Env>
     (
         style: NodeStyle<Met, Rul, Val, Dat>,
-        expNode: (env: Env) => ExpNode<Met, Rul, Val, Dat>
+        expNode_: (env: Env) => ExpNode<Met, Rul, Val, Dat>
     ): (env: Env) => ExpNode<Met, Rul, Val, Dat> {
-    throw new Error("TODO");
+    return (env) => {
+        const expNode = expNode_(env)
+        return ({
+            exp: expNode.exp,
+            nodes: expNode.nodes.map(node => ({ ...node, style }))
+        })
+    }
+    // ({ ...expNode(env), style })
 }
 
+// TODO: pull back custom Envs to a general interface
 type Env<Met, Rul, Val, Dat> = RecordOf<{
     st: State<Met, Rul, Val, Dat>,
     indentationLevel: number,
@@ -272,6 +280,10 @@ export function buildBackend<Met, Rul, Val, Dat, Env>(
             format: (st, query) => {
                 const initEnv = args.makeInitEnv(st)
 
+                function flatMapApply<A, B>(...fs: ((x: A) => B[])[]): (x: A) => B[] {
+                    return x => fs.flatMap((f) => f(x))
+                }
+
                 const acts: Action<Met, Rul, Val>[] | undefined =
                     query.str.length > 0 ?
                         args.interpretQueryString(st, query.str) :
@@ -293,7 +305,14 @@ export function buildBackend<Met, Rul, Val, Dat, Env>(
                     } else {
                         switch (act.case) {
                             case 'replace':
-                                return formatNodeStyle({ case: 'query-replace-new' }, kid)
+                                return (env) => {
+                                    const expNode_new = formatNodeStyle({ case: 'query-replace-new' }, args.formatExp(st, act.exp, zipPar))(env)
+                                    const expNode_old = formatNodeStyle({ case: 'query-replace-old' }, kid)(env)
+                                    return ({
+                                        exp: expNode_new.exp,
+                                        nodes: [expNode_new.nodes, expNode_old.nodes].flat()
+                                    })
+                                }
                             case 'insert':
                                 return formatNodeStyle({ case: 'query-insert-top' },
                                     args.formatZip(st, act.zips, zipPar)
@@ -314,7 +333,7 @@ export function buildBackend<Met, Rul, Val, Dat, Env>(
                                 formatNodeStyle({ case: 'cursor' },
                                     args.formatExp(st, st.mode.cursor.exp, zipParQuery ?? st.mode.cursor.zips.get(0))),
                                 st.mode.cursor.zips.get(0)
-                            ))(initEnv).node
+                            ))(initEnv).nodes
                     }
                     case 'select':
                         return args.formatZip(st, st.mode.select.zipsTop, undefined)
@@ -326,7 +345,7 @@ export function buildBackend<Met, Rul, Val, Dat, Env>(
                                         ))
                                 ),
                                 st.mode.select.zipsTop.get(0)
-                            ))(initEnv).node
+                            ))(initEnv).nodes
                 }
             },
 
