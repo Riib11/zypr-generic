@@ -17,13 +17,9 @@ export type Dat = {
     isParenthesized: boolean,
 }
 
-export default function backend(
-    { language }:
-        { language: Language<Met, Rul, Val>; }
-): Backend.Backend<Met, Rul, Val, Dat> {
+export default function backend(language: Language<Met, Rul, Val>): Backend.Backend<Met, Rul, Val, Dat> {
 
     function isValidSelect(select: Backend.Select<Met, Rul, Val>): boolean {
-        // TODO: modify when there are lambdas with ids
         return true
     }
 
@@ -54,13 +50,14 @@ export default function backend(
     function escapeSelect(
         select: Backend.Select<Met, Rul, Val>
     ): Backend.Cursor<Met, Rul, Val> {
+        console.log("escapeSelect; select.orient = " + select.orient)
         switch (select.orient) {
             case 'top': return {
                 zips: select.zipsTop,
-                exp: unzipsExp(language.grammar, select.zipsBot.reverse(), select.exp)
+                exp: unzipsExp(language.grammar, Backend.getZipsBot(select), select.exp)
             }
             case 'bot': return {
-                zips: select.zipsBot.concat(select.zipsTop),
+                zips: Backend.getZipsBot(select).concat(select.zipsTop),
                 exp: select.exp
             }
         }

@@ -248,11 +248,8 @@ function renderAux(
         </div>)
 }
 
-export default function frontend
-    ({ backend }: {
-        // works with any backend for language Alpha
-        backend: Backend<Met, Rul, Val, Dat>,
-    }) {
+export default function frontend(backend: Backend<Met, Rul, Val, Dat>) {
+
     function renderNode(
         node: Node<Met, Rul, Val, Dat>,
         editor: Editor<Met, Rul, Val, Dat>,
