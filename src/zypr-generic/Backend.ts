@@ -2,7 +2,7 @@ import { List, Record, RecordOf } from 'immutable'
 import { EndoPart, EndoReadPart } from '../Endo'
 import { Direction } from './Direction'
 import { Query } from './Editor'
-import { enterCursor, Exp, Grammar, makeExpTemplate, makeHole, makeZipTemplates, moveCursor, moveSelect, Pre, Zip } from './Language'
+import { enterCursor, Exp, Grammar, Language, makeExpTemplate, makeHole, makeZipTemplates, moveCursor, moveSelect, Pre, Zip } from './Language'
 import { ExpNode, formatWrapper, Node } from './Node'
 
 // Env: render environment
@@ -14,7 +14,7 @@ export type Backend<Met, Rul, Val, Dat> = {
 }
 
 export type Props<Met, Rul, Val, Dat> = {
-    grammar: Grammar<Met, Rul, Val>,
+    language: Language<Met, Rul, Val>,
     isValidSelect: (select: Select<Met, Rul, Val>) => boolean,
     format: (st: State<Met, Rul, Val, Dat>, query: Query) => Node<Met, Rul, Val, Dat>,
     // TODO: extend with completions
@@ -130,10 +130,10 @@ export function getStateMet<Met, Rul, Val, Dat>(gram: Grammar<Met, Rul, Val>, st
 
 export function cut<Met, Rul, Val, Dat>(): EndoReadPart<Props<Met, Rul, Val, Dat>, State<Met, Rul, Val, Dat>> {
     return updateState((pr, st): State<Met, Rul, Val, Dat> | undefined => {
-        const met = getStateMet(pr.grammar, st)
+        const met = getStateMet(pr.language.grammar, st)
         switch (st.mode.case) {
             case 'cursor': return st
-                .set('mode', { case: 'cursor', cursor: { zips: st.mode.cursor.zips, exp: makeHole(pr.grammar, met) } })
+                .set('mode', { case: 'cursor', cursor: { zips: st.mode.cursor.zips, exp: makeHole(pr.language.grammar, met) } })
                 .set('clipboard', { case: 'exp', exp: st.mode.cursor.exp })
 
             case 'select': return st
@@ -232,21 +232,20 @@ export function buildInterpretQueryString<Met, Rul, Val, Dat>(
     }
 }
 
-type Env<Met, Rul, Val> = RecordOf<{
+type Env<Met, Rul, Val, Dat> = RecordOf<{
     st: State<Met, Rul, Val, Dat>,
     indentationLevel: number,
     zips: List<Zip<Met, Rul, Val>>
-}
+}>
 
-function formatPre<Met, Rul, Val, Dat>(
-
-)
+// TODO: what was this supposed to do?
+// function formatPre<Met, Rul, Val, Dat>() {}
 
 // buildBackend
 
 export function buildBackend<Met, Rul, Val, Dat, Env>(
     args: {
-        grammar: Grammar<Met, Rul, Val>,
+        language: Language<Met, Rul, Val>,
         isValidSelect: Props<Met, Rul, Val, Dat>['isValidSelect'], // is this necessary, or can be abstracted to Language?
         initExp: Exp<Met, Rul, Val>,
         // actions
@@ -315,7 +314,7 @@ export function buildBackend<Met, Rul, Val, Dat, Env>(
                         return args.formatZip(st, st.mode.select.zipsTop, undefined)
                             (formatQueryAround(
                                 formatWrapper({ case: 'select-top' },
-                                    [args.formatZip(st, st.mode.select.zipsBot, zipParQuery ?? st.mode.select.zipsTop.get(0))
+                                    [args.formatZip(st, getZipsBot(st.mode.select), zipParQuery ?? st.mode.select.zipsTop.get(0))
                                         (formatWrapper({ case: 'select-bot' },
                                             [args.formatExp(st, st.mode.select.exp, getZipsBot(st.mode.select).get(0))]
                                         ))]
@@ -358,18 +357,18 @@ export function buildBackend<Met, Rul, Val, Dat, Env>(
                             }
                         })
                     }
-                    case 'move_cursor': return updateMode((mode) => moveCursor(args.grammar, act.dir, mode))
-                    case 'move_select': return updateMode((mode) => moveSelect(args.grammar, act.dir, mode))
+                    case 'move_cursor': return updateMode((mode) => moveCursor(args.language.grammar, act.dir, mode))
+                    case 'move_select': return updateMode((mode) => moveSelect(args.language.grammar, act.dir, mode))
                     case 'delete': {
                         return updateMode((mode): Mode<Met, Rul, Val> | undefined => {
-                            const met = getModeMet(args.grammar, mode)
+                            const met = getModeMet(args.language.grammar, mode)
                             switch (mode.case) {
                                 case 'cursor': {
                                     return {
                                         case: 'cursor',
                                         cursor: {
                                             zips: mode.cursor.zips,
-                                            exp: makeHole(args.grammar, met)
+                                            exp: makeHole(args.language.grammar, met)
                                         }
                                     }
                                 }
@@ -386,7 +385,7 @@ export function buildBackend<Met, Rul, Val, Dat, Env>(
                         })
                     }
                     case 'escape': return updateMode((mode): Mode<Met, Rul, Val> | undefined => {
-                        return { case: 'cursor', cursor: enterCursor(args.grammar, mode) }
+                        return { case: 'cursor', cursor: enterCursor(args.language.grammar, mode) }
                     })
                     case 'cut': return cut()
                     case 'copy': return copy()

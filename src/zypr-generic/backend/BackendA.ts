@@ -1,7 +1,7 @@
 import { List, Record, RecordOf } from "immutable";
 import { debug } from "../../Debug";
 import * as Backend from "../Backend";
-import { eqZip, eqZips, Grammar, makeHole, unzipsExp, zipExp } from "../Language";
+import { eqZip, eqZips, Grammar, Language, makeHole, unzipsExp, zipExp } from "../Language";
 import { Pre, Exp, Zip, Met, Rul, Val, AppVal } from "../language/LanguageAlpha";
 import { Node, ExpNode } from "../Node";
 
@@ -18,8 +18,8 @@ export type Dat = {
 }
 
 export default function backend(
-    { grammar }:
-        { grammar: Grammar<Met, Rul, Val>; }
+    { language }:
+        { language: Language<Met, Rul, Val>; }
 ): Backend.Backend<Met, Rul, Val, Dat> {
 
     function isValidSelect(select: Backend.Select<Met, Rul, Val>): boolean {
@@ -57,7 +57,7 @@ export default function backend(
         switch (select.orient) {
             case 'top': return {
                 zips: select.zipsTop,
-                exp: unzipsExp(grammar, select.zipsBot.reverse(), select.exp)
+                exp: unzipsExp(language.grammar, select.zipsBot.reverse(), select.exp)
             }
             case 'bot': return {
                 zips: select.zipsBot.concat(select.zipsTop),
@@ -150,8 +150,8 @@ export default function backend(
             }
             case 'app': {
                 const kids = exp.kids.map((kid, i) =>
-                    formatExp(st, kid, defined(zipExp(grammar, exp, i)).zip)
-                        (nextEnv(defined(zipExp(grammar, exp, i)).zip, env)))
+                    formatExp(st, kid, defined(zipExp(language.grammar, exp, i)).zip)
+                        (nextEnv(defined(zipExp(language.grammar, exp, i)).zip, env)))
                     .toArray()
                 return {
                     exp,
@@ -175,19 +175,19 @@ export default function backend(
                 } else {
                     return formatZip(st, zips.shift(), zipPar)((env): ExpNode<Met, Rul, Val, Dat> => {
                         const kid = node(nextEnv(zip, env))
-                        const exp = unzipsExp(grammar, List([zip]), kid.exp)
+                        const exp = unzipsExp(language.grammar, List([zip]), kid.exp)
 
                         // is reversed
                         const kidsLeft: ExpNode<Met, Rul, Val, Dat>[] =
                             zip.kidsLeft.reverse().map((kid, i) =>
-                                formatExp(st, kid, defined(zipExp(grammar, exp, i)).zip)
-                                    (nextEnv(defined(zipExp(grammar, exp, i)).zip, env))
+                                formatExp(st, kid, defined(zipExp(language.grammar, exp, i)).zip)
+                                    (nextEnv(defined(zipExp(language.grammar, exp, i)).zip, env))
                             ).toArray()
 
                         const kidsRight: ExpNode<Met, Rul, Val, Dat>[] =
                             zip.kidsRight.map((kid, i) =>
-                                formatExp(st, kid, defined(zipExp(grammar, exp, i + zip.kidsLeft.size + 1)).zip)
-                                    (nextEnv(defined(zipExp(grammar, exp, i + zip.kidsLeft.size + 1)).zip, env))
+                                formatExp(st, kid, defined(zipExp(language.grammar, exp, i + zip.kidsLeft.size + 1)).zip)
+                                    (nextEnv(defined(zipExp(language.grammar, exp, i + zip.kidsLeft.size + 1)).zip, env))
                             ).toArray()
 
                         const kids: ExpNode<Met, Rul, Val, Dat>[] =
@@ -205,7 +205,7 @@ export default function backend(
                 }
             }
 
-    const interpretQueryString = Backend.buildInterpretQueryString(grammar,
+    const interpretQueryString = Backend.buildInterpretQueryString(language.grammar,
         (met, str): { rul: Rul, val: Val } | undefined => {
             switch (met) {
                 case 'exp': {
@@ -223,7 +223,7 @@ export default function backend(
     //     if (str === "") return []
     //     else if (str === " ") {
     //         const acts: Backend.Action<Met, Rul, Val>[] =
-    //             makeZipTemplates(grammar, 'exp', 'app').map((zip) => ({
+    //             makeZipTemplates(language, 'exp', 'app').map((zip) => ({
     //                 case: 'insert',
     //                 zips: List([zip])
     //             }))
@@ -232,7 +232,7 @@ export default function backend(
     //         const acts: Backend.Action<Met, Rul, Val>[] = [
     //             {
     //                 case: 'replace',
-    //                 exp: verifyExp(grammar, {
+    //                 exp: verifyExp(language, {
     //                     met: 'exp',
     //                     rul: 'var',
     //                     val: { label: str },
@@ -280,11 +280,11 @@ export default function backend(
         return undefined
     }
 
-    const initExp: Exp = makeHole(grammar, 'exp')
+    const initExp: Exp = makeHole(language.grammar, 'exp')
 
     return Backend.buildBackend<Met, Rul, Val, Dat, Env>(
         {
-            grammar: grammar,
+            language: language,
             isValidSelect,
             makeInitEnv,
             formatExp,

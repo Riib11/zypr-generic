@@ -26,7 +26,7 @@ function isArg(zip: Zip): boolean {
     return zip.rul === 'app' && zip.kidsLeft.size == 1
 }
 
-export default function grammar(): Language.Language<Met, Rul, Val> {
+export default function language(): Language.Language<Met, Rul, Val> {
     let grammar: Language.Grammar<Met, Rul, Val> = {
         rules: (met) => ({
             'exp': ['var', 'app', 'hol'] as Rul[]
