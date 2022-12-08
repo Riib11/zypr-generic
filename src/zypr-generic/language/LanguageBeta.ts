@@ -70,7 +70,8 @@ export default function language(): Language.Language<Met, Rul, Val> {
   function isParenthesized(zips: List<Zip>, exp: Exp): boolean {
     let zip = zips.get(0)
     if (zip === undefined) return false
-    if (isArg(zip) && (exp.rul === 'app' || exp.rul === 'lam')) return true
+    if (exp.rul === 'app' && !isApl(zip)) return true
+    if (exp.rul === 'lam' && !isBod(zip)) return true
     return false
   }
 

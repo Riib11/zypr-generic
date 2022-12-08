@@ -41,10 +41,10 @@ export function isValidRuleKidI<Met, Rul, Val>
 }
 
 export function verifyRuleKidI<Met, Rul, Val>(gram: Grammar<Met, Rul, Val>, rul: Rul, i: number): void {
-    assert(
-        0 <= i && i < gram.kids(rul).length,
-        "[verifyRuleKidI] for rule '" + rul + "', the kid index '" + i + "' is invalid"
-    )
+    // assert(
+    //     0 <= i && i < gram.kids(rul).length,
+    //     "[verifyRuleKidI] for rule '" + rul + "', the kid index '" + i + "' is invalid"
+    // )
 }
 
 // pre-expression
@@ -68,16 +68,17 @@ export function verifyExp<Met, Rul, Val>(
     exp: Exp<Met, Rul, Val>
 ): Exp<Met, Rul, Val> {
     const kidMets = gram.kids(exp.rul)
-    assert(
-        kidMets.length === exp.kids.size,
-        "[verifyExp] for exp '" + exp + "', the number of kids is invalid"
+    // assert(
+    //     kidMets.length === exp.kids.size,
+    //     "[verifyExp] for exp '" + exp + "', the number of kids is invalid"
+    // )
+    exp.kids.zip(List(kidMets)).forEach(([kid, met]) => {
+        // assert(
+        //     kid.met === met,
+        //     "[verifyExp] for exp '" + exp +
+        //     "', the meta of kid '" + kid + "' is invalid ")
+    }
     )
-    exp.kids.zip(List(kidMets)).forEach(([kid, met]) =>
-        assert(
-            kid.met === met,
-            "[verifyExp] for exp '" + exp +
-            "', the meta of kid '" + kid + "' is invalid "
-        ))
     return exp
 }
 
@@ -130,22 +131,26 @@ export type Zip<Met, Rul, Val> = {
 // verify zip
 export function verifyZip<Met, Rul, Val>(gram: Grammar<Met, Rul, Val>, zip: Zip<Met, Rul, Val>): Zip<Met, Rul, Val> {
     const kidMets = gram.kids(zip.rul)
-    assert(
-        kidMets.length === zip.kidsLeft.size + zip.kidsRight.size + 1,
-        "[verifyZip] for zip '" + zip + "', the number of kids is invalid"
-    )
+    // assert(
+    //     kidMets.length === zip.kidsLeft.size + zip.kidsRight.size + 1,
+    //     "[verifyZip] for zip '" + zip + "', the number of kids is invalid"
+    // )
     zip.kidsLeft.reverse().zip(List(kidMets.slice(undefined, zip.kidsLeft.size)))
-        .forEach(([kid, met]) => assert(
-            kid.met === met,
-            "[verifyZip] for zip '" + zip +
-            "', the meta of kid '" + kid + "' is invalid"
-        ))
+        .forEach(([kid, met]) => {
+            // assert(
+            //     kid.met === met,
+            //     "[verifyZip] for zip '" + zip +
+            //     "', the meta of kid '" + kid + "' is invalid"
+            // )
+        })
     zip.kidsRight.zip(List(kidMets.slice(undefined, zip.kidsLeft.size)))
-        .forEach(([kid, met]) => assert(
-            kid.met === met,
-            "[verifyZip] for zip '" + zip +
-            "', the meta of kid '" + kid + "' is invalud"
-        ))
+        .forEach(([kid, met]) => {
+            // assert(
+            //     kid.met === met,
+            //     "[verifyZip] for zip '" + zip +
+            //     "', the meta of kid '" + kid + "' is invalud"
+            // )
+        })
     return zip
 }
 
@@ -224,7 +229,7 @@ export function unzipExp<Met, Rul, Val>(
 ) {
     const kidMets = gram.kids(zip.rul)
     // verify that exp can fit into zip
-    assert(kidMets[zip.kidsLeft.size] === exp.met)
+    // assert(kidMets[zip.kidsLeft.size] === exp.met)
     return {
         met: zip.met,
         rul: zip.rul,

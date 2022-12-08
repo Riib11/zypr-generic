@@ -1,8 +1,9 @@
 import React from 'react'
 import './App.css'
-import './zypr-generic/frontend/Frontend1.css'
-import editor from "./zypr-generic/editor/EditorAlphaA1"
-// import editor from './zypr-generic/editor/EditorBetaB1'
+// import './zypr-generic/frontend/Frontend1.css'
+// import editor from "./zypr-generic/editor/EditorAlphaA1"
+import './zypr-generic/frontend/Frontend2.css'
+import editor from './zypr-generic/editor/EditorBetaB2'
 
 type Props = {}
 
