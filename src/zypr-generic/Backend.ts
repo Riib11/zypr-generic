@@ -128,67 +128,18 @@ export function getStateMet<Met, Rul, Val, Dat>(gram: Grammar<Met, Rul, Val>, st
     return getModeMet(gram, st.mode)
 }
 
-export function cut<Met, Rul, Val, Dat>(): EndoReadPart<Props<Met, Rul, Val, Dat>, State<Met, Rul, Val, Dat>> {
-    return updateState((pr, st): State<Met, Rul, Val, Dat> | undefined => {
-        const met = getStateMet(pr.language.grammar, st)
-        switch (st.mode.case) {
-            case 'cursor': return st
-                .set('mode', { case: 'cursor', cursor: { zips: st.mode.cursor.zips, exp: makeHole(pr.language.grammar, met) } })
-                .set('clipboard', { case: 'exp', exp: st.mode.cursor.exp })
-
-            case 'select': return st
-                .set('mode', { case: 'cursor', cursor: { zips: st.mode.select.zipsTop, exp: st.mode.select.exp } })
-                .set('clipboard', { case: 'zips', zips: getZipsBot(st.mode.select) })
-        }
-    })
-}
-
-export function copy<Met, Rul, Val, Dat>(): EndoReadPart<Props<Met, Rul, Val, Dat>, State<Met, Rul, Val, Dat>> {
-    return updateState((pr, st): State<Met, Rul, Val, Dat> | undefined => {
-        switch (st.mode.case) {
-            case 'cursor': return st
-                .set('clipboard', { case: 'exp', exp: st.mode.cursor.exp })
-
-            case 'select': return st
-                .set('clipboard', { case: 'zips', zips: getZipsBot(st.mode.select) })
-        }
-    })
-}
-
-export function paste<Met, Rul, Val, Dat>(): EndoReadPart<Props<Met, Rul, Val, Dat>, State<Met, Rul, Val, Dat>> {
-    return updateState((pr, st): State<Met, Rul, Val, Dat> | undefined => {
-        if (st.clipboard === undefined) return undefined
-        switch (st.clipboard.case) {
-            case 'exp': {
-                switch (st.mode.case) {
-                    case 'cursor': return st
-                        .set('mode', { case: 'cursor', cursor: { zips: st.mode.cursor.zips, exp: st.clipboard.exp } })
-                    case 'select': return undefined
-                }
-            }
-            case 'zips': {
-                switch (st.mode.case) {
-                    case 'cursor': return st
-                        .set('mode', { case: 'cursor', cursor: { zips: st.clipboard.zips.concat(st.mode.cursor.zips), exp: st.mode.cursor.exp } })
-                    case 'select': return st
-                        .set('mode', { case: 'cursor', cursor: { zips: st.clipboard.zips.concat(st.mode.select.zipsTop), exp: st.mode.select.exp } })
-                }
-            }
-        }
-    })
-}
-
 export function getZipsBot<Met, Rul, Val>(select: Select<Met, Rul, Val>) {
-    switch (select.orient) {
-        case 'top': return select.zipsBot.reverse()
-        case 'bot': return select.zipsBot
-    }
+    return toZipsBot(select.orient, select.zipsBot)
 }
 
 export function setZipsBot<Met, Rul, Val>(select: Select<Met, Rul, Val>, zips: List<Zip<Met, Rul, Val>>) {
-    switch (select.orient) {
-        case 'top': return { ...select, zipsBot: zips.reverse() }
-        case 'bot': return { ...select, zipsBot: zips }
+    return { ...select, zipsBot: toZipsBot(select.orient, zips) }
+}
+
+export function toZipsBot<Met, Rul, Val>(orient: Orient, zips: List<Zip<Met, Rul, Val>>) {
+    switch (orient) {
+        case 'top': return zips.reverse()
+        case 'bot': return zips
     }
 }
 
@@ -225,10 +176,18 @@ export function buildInterpretQueryString<Met, Rul, Val, Dat>(
                 case 'select': return []
             }
         }
-        else return makeZipTemplates(gram, met, rul, val).map(zip => ({
-            case: 'insert',
-            zips: List([zip])
-        }))
+        else {
+            const zips = makeZipTemplates(gram, met, rul, val, (() => {
+                switch (st.mode.case) {
+                    case 'cursor': return st.mode.cursor.exp.met
+                    case 'select': return st.mode.select.exp.met
+                }
+            })())
+            return zips.map(zip => ({
+                case: 'insert',
+                zips: List([zip])
+            }))
+        }
     }
 }
 
@@ -274,6 +233,61 @@ export function buildBackend<Met, Rul, Val, Dat, Env>(
         formatZip: (st: State<Met, Rul, Val, Dat>, zips: List<Zip<Met, Rul, Val>>, zipPar: Zip<Met, Rul, Val> | undefined) => (kid: (env: Env) => ExpNode<Met, Rul, Val, Dat>) => (env: Env) => ExpNode<Met, Rul, Val, Dat>
     },
 ): Backend<Met, Rul, Val, Dat> {
+    function cut(): EndoReadPart<Props<Met, Rul, Val, Dat>, State<Met, Rul, Val, Dat>> {
+        return updateState((pr, st): State<Met, Rul, Val, Dat> | undefined => {
+            const met = getStateMet(pr.language.grammar, st)
+            switch (st.mode.case) {
+                case 'cursor': return st
+                    .set('mode', { case: 'cursor', cursor: { zips: st.mode.cursor.zips, exp: makeHole(pr.language.grammar, met) } })
+                    .set('clipboard', { case: 'exp', exp: st.mode.cursor.exp })
+
+                case 'select':
+                    if (!args.isValidSelect(st.mode.select)) return undefined
+                    return st
+                        .set('mode', { case: 'cursor', cursor: { zips: st.mode.select.zipsTop, exp: st.mode.select.exp } })
+                        .set('clipboard', { case: 'zips', zips: getZipsBot(st.mode.select) })
+            }
+        })
+    }
+
+    function copy(): EndoReadPart<Props<Met, Rul, Val, Dat>, State<Met, Rul, Val, Dat>> {
+        return updateState((pr, st): State<Met, Rul, Val, Dat> | undefined => {
+            switch (st.mode.case) {
+                case 'cursor': return st
+                    .set('clipboard', { case: 'exp', exp: st.mode.cursor.exp })
+
+                case 'select':
+                    if (!args.isValidSelect(st.mode.select)) return undefined
+                    return st
+                        .set('clipboard', { case: 'zips', zips: getZipsBot(st.mode.select) })
+            }
+        })
+    }
+
+    function paste(): EndoReadPart<Props<Met, Rul, Val, Dat>, State<Met, Rul, Val, Dat>> {
+        return updateState((pr, st): State<Met, Rul, Val, Dat> | undefined => {
+            if (st.clipboard === undefined) return undefined
+            switch (st.clipboard.case) {
+                case 'exp': {
+                    switch (st.mode.case) {
+                        case 'cursor': return st.set('mode', { case: 'cursor', cursor: { zips: st.mode.cursor.zips, exp: st.clipboard.exp } })
+                        case 'select': return undefined
+                    }
+                }
+                case 'zips': {
+                    switch (st.mode.case) {
+                        case 'cursor':
+                            if (!args.isValidSelect({ zipsTop: st.mode.cursor.zips, zipsBot: toZipsBot('bot', st.clipboard.zips), exp: st.mode.cursor.exp, orient: 'bot' })) return undefined
+                            return st.set('mode', { case: 'cursor', cursor: { zips: st.clipboard.zips.concat(st.mode.cursor.zips), exp: st.mode.cursor.exp } })
+                        case 'select':
+                            if (!args.isValidSelect({ zipsTop: st.mode.select.zipsTop, zipsBot: toZipsBot('bot', st.clipboard.zips), exp: st.mode.select.exp, orient: 'bot' })) return undefined
+                            return st.set('mode', { case: 'cursor', cursor: { zips: st.clipboard.zips.concat(st.mode.select.zipsTop), exp: st.mode.select.exp } })
+                    }
+                }
+            }
+        })
+    }
+
     return {
         props: {
             ...args,
@@ -332,11 +346,12 @@ export function buildBackend<Met, Rul, Val, Dat, Env>(
                             ))(initEnv).nodes
                     }
                     case 'select':
+                        const isValid = args.isValidSelect(st.mode.select)
                         return args.formatZip(st, st.mode.select.zipsTop, undefined)
                             (formatQueryAround(
-                                formatNodeStyle({ case: 'select-top' },
+                                formatNodeStyle({ case: 'select-top', isValid },
                                     args.formatZip(st, getZipsBot(st.mode.select), zipParQuery ?? st.mode.select.zipsTop.get(0))
-                                        (formatNodeStyle({ case: 'select-bot' },
+                                        (formatNodeStyle({ case: 'select-bot', isValid },
                                             args.formatExp(st, st.mode.select.exp, getZipsBot(st.mode.select).get(0))
                                         ))
                                 ),
@@ -371,6 +386,7 @@ export function buildBackend<Met, Rul, Val, Dat, Env>(
                                         exp: mode.cursor.exp // wrapZipExp(act.zips, mode.cursor.exp)
                                     }
                                 }
+                                // TODO: probably disable this and don't allow queries to start during a select
                                 case 'select': return {
                                     case: 'select',
                                     select: setZipsBot(mode.select, act.zips)
@@ -394,6 +410,7 @@ export function buildBackend<Met, Rul, Val, Dat, Env>(
                                     }
                                 }
                                 case 'select': {
+                                    if (!args.isValidSelect(mode.select)) return undefined
                                     return {
                                         case: 'cursor',
                                         cursor: {

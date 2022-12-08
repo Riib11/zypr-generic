@@ -13,8 +13,8 @@ export type Node<Met, Rul, Val, Dat> = {
 
 export type NodeStyle<Met, Rul, Val, Dat>
     = { case: 'cursor' }
-    | { case: 'select-top' }
-    | { case: 'select-bot' }
+    | { case: 'select-top', isValid: boolean }
+    | { case: 'select-bot', isValid: boolean }
     | { case: 'query-insert-top' }
     | { case: 'query-insert-bot' }
     | { case: 'query-replace-new' }

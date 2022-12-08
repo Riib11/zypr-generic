@@ -41,11 +41,20 @@
   background-color: rgb(211, 211, 255);
 }
 
+.node-select-top-invalid {
+  background-color: rgb(255, 100, 100);
+}
+
 .node-select-bot {
   /* border-left: 2px solid black;
   border-right: 2px solid black; */
   /* box-shadow: -2px 0 0 0 black, 2px 0 0 0 black; */
   box-shadow: 0 0 0 2px black;
+  background-color: white;
+}
+
+.node-select-bot-invalid {
+  /* same as .node-select-bot */
   background-color: white;
 }
 

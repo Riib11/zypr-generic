@@ -159,8 +159,10 @@ export function makeZipTemplate<Met, Rul, Val>(
     met: Met,
     rul: Rul,
     val: Val,
-    i: number
-): Zip<Met, Rul, Val> {
+    i: number,
+    metBot: Met
+): Zip<Met, Rul, Val> | undefined {
+    if (gram.kids(rul)[i] !== metBot) return undefined
     return verifyZip(gram, {
         met, rul, val,
         kidsLeft: List(gram.kids(rul).slice(undefined, i).map((met) => makeHole(gram, met)).reverse()),
@@ -194,9 +196,10 @@ export function eqZips<Met, Rul, Val>(
 
 export function makeZipTemplates<Met, Rul, Val>(
     gram: Grammar<Met, Rul, Val>,
-    met: Met, rul: Rul, val: Val
+    met: Met, rul: Rul, val: Val,
+    metBot: Met
 ): Zip<Met, Rul, Val>[] {
-    return gram.kids(rul).map((_kidMet, i) => makeZipTemplate(gram, met, rul, val, i))
+    return gram.kids(rul).flatMap((_kidMet, i) => makeZipTemplate(gram, met, rul, val, i, metBot) ?? [])
 }
 
 // the index of the zip's hole

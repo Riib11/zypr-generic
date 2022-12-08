@@ -41,6 +41,16 @@ export function isBod(zip: Zip | undefined): boolean {
   return zip !== undefined && zip.rul === 'lam' && zip.kidsLeft.size === 1
 }
 
+export function prettyPre(pre: Pre): string {
+  switch (pre.rul) {
+    case 'bnd': return "@\"" + (pre.val as BndVal).label + "\""
+    case 'var': return "\"" + (pre.val as VarVal).label + "\""
+    case 'app': return "(_ _)"
+    case 'lam': return "(_ ↦ _)"
+    case 'hol': return "?"
+  }
+}
+
 export default function language(): Language.Language<Met, Rul, Val> {
   let grammar: Language.Grammar<Met, Rul, Val> = {
     rules: (met) => ({

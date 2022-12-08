@@ -2,7 +2,7 @@ import { List, Record, RecordOf } from "immutable";
 import { debug } from "../../Debug";
 import * as Backend from "../Backend";
 import { eqZip, eqZips, Grammar, Language, makeHole, unzipsExp, zipExp } from "../Language";
-import { Pre, Exp, Zip, Met, Rul, Val, AppVal, isArg, isBod } from "../language/LanguageBeta";
+import { Pre, Exp, Zip, Met, Rul, Val, AppVal, isArg, isBod, prettyPre } from "../language/LanguageBeta";
 import { Node, ExpNode } from "../Node";
 
 type Env = RecordOf<{
@@ -21,11 +21,13 @@ export default function backend(language: Language<Met, Rul, Val>): Backend.Back
 
   function isValidSelect(select: Backend.Select<Met, Rul, Val>): boolean {
     // check that the top and bot of select have same met
-    let zipTop = select.zipsTop.get(0)
-    let zipBot = Backend.getZipsBot(select).get(0)
-    if (zipTop === undefined || zipBot === undefined)
-      throw new Error("bad selection");
-    return zipTop.met === zipBot.met
+    const zipsBot = Backend.getZipsBot(select)
+    const preTop = zipsBot.get(-1)
+    if (preTop === undefined) return true
+    const preBot = select.exp as Pre
+    console.log("preTop", prettyPre(preTop))
+    console.log("preBot", prettyPre(preBot))
+    return preTop.met === preBot.met
   }
 
   const makeInitEnv = (st: Backend.State<Met, Rul, Val, Dat>): Env => Record({

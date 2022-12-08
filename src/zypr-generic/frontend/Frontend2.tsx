@@ -219,8 +219,8 @@ export default function frontend(backend: Backend<Met, Rul, Val, Dat>) {
             return renderExp(editor, expElemPar, node, elems, classNames)
           switch (node.style.case) {
             case 'cursor': return renderExp(editor, expElemPar, node, elems, classNames.concat(["node-cursor"]))
-            case 'select-top': return renderExp(editor, expElemPar, node, elems, classNames.concat(["node-select-top"]))
-            case 'select-bot': return renderExp(editor, expElemPar, node, elems, classNames.concat(["node-select-bot"]))
+            case 'select-top': return renderExp(editor, expElemPar, node, elems, classNames.concat([["node-select-top"], node.style.isValid ? [] : ["node-select-top-invalid"]].flat()))
+            case 'select-bot': return renderExp(editor, expElemPar, node, elems, classNames.concat([["node-select-bot"], node.style.isValid ? [] : ["node-select-bot-invalid"]].flat()))
             case 'query-insert-top': return renderExp(editor, expElemPar, node, elems, classNames.concat("node-query-insert-top"))
             case 'query-insert-bot': return renderExp(editor, expElemPar, node, elems, classNames.concat("node-query-insert-bot"))
             case 'query-replace-new': return renderExp(editor, expElemPar, node, elems, classNames.concat(["node-query-replace-new"]))
@@ -277,9 +277,10 @@ export default function frontend(backend: Backend<Met, Rul, Val, Dat>) {
       switch (node.dat.pre.rul) {
 
         case 'bnd':
+          const label = (node.dat.pre.val as BndVal).label
           return indent(query([
             renderExp_(node,
-              [renderAux([(_) => <span>{(node.dat.pre.val as BndVal).label}</span>], classNames.concat(["node-bnd-bnd-label"]))],
+              [renderAux([(_) => <span>{label.length === 0 ? "~" : label}</span>], classNames.concat(["node-bnd-bnd-label"]))],
               classNames.concat(["node-bnd-bnd"])
             )
           ]))
