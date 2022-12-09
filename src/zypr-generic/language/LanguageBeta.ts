@@ -10,7 +10,7 @@ export type Met
   | 'exp'
 
 export type Rul
-  // bnf
+  // bnd
   = 'bnd'
   // exp
   | 'var'
