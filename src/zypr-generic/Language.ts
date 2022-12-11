@@ -13,7 +13,7 @@ export type Grammar<Met, Rul, Val> = {
 export type Language<Met, Rul, Val> = {
     grammar: Grammar<Met, Rul, Val>,
     isParenthesized: (zips: List<Zip<Met, Rul, Val>>, exp: Exp<Met, Rul, Val>) => boolean,
-    isIndentable: (zips: List<Zip<Met, Rul, Val>>, exp: Exp<Met, Rul, Val>) => boolean
+    modifyIndent: (f: (isIndented: boolean) => boolean, zip: Zip<Met, Rul, Val>) => Zip<Met, Rul, Val> | undefined
 }
 
 // export function buildGrammar<Met extends string, Rul extends string, Val>(
@@ -440,3 +440,7 @@ export function moveSelect<Met, Rul, Val>(
     }
 }
 
+export function toggleIndent<Met, Rul, Val>
+    (lang: Language<Met, Rul, Val>, zip: Zip<Met, Rul, Val>): Zip<Met, Rul, Val> | undefined {
+    return lang.modifyIndent((b: boolean) => !b, zip)
+}

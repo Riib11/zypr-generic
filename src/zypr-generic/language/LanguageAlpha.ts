@@ -60,15 +60,17 @@ export default function language(): Language.Language<Met, Rul, Val> {
         }
     }
 
-    function isIndentable(zips: List<Zip>, exp: Exp): boolean {
-        let zip = zips.get(0)
-        if (zip === undefined) return false
-        return isArg(zip)
+    function modifyIndent(f: (isIndented: boolean) => boolean, zip: Zip): Zip | undefined {
+        switch (zip.rul) {
+            case 'app': return isArg(zip) ? { ...zip, val: { ...zip.val, indentedArg: f((zip.val as AppVal).indentedArg) } } : undefined
+            case 'var': return undefined
+            case 'hol': return undefined
+        }
     }
 
     return {
         grammar,
         isParenthesized,
-        isIndentable
+        modifyIndent
     }
 }

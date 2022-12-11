@@ -13,6 +13,7 @@ export type Node<Met, Rul, Val, Dat> = {
 
 export type NodeStyle<Met, Rul, Val, Dat>
     = { case: 'cursor' }
+    // TODO: actually we dont need isValid since we will just skip over that
     | { case: 'select-top', isValid: boolean }
     | { case: 'select-bot', isValid: boolean }
     | { case: 'query-insert-top' }

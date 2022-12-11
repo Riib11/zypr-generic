@@ -69,11 +69,11 @@ export default function language(): Language.Language<Met, Rul, Val> {
       'exp': ['var', 'app', 'hol'] as Rul[]
     }[met]),
     valueDefault: (rul) => ({
-      'bnd': { label: "" } as Val,
-      'var': { label: "" } as Val,
-      'app': { indentedArg: false } as Val,
-      'lam': { indentedBod: false } as Val,
-      'let': { indentedImp: false, indentedBod: false } as Val,
+      'bnd': { label: "" } as BndVal,
+      'var': { label: "" } as VarVal,
+      'app': { indentedArg: false } as AppVal,
+      'lam': { indentedBod: false } as LamVal,
+      'let': { indentedImp: false, indentedBod: false } as LetVal,
       'hol': {} as Val
     }[rul]),
     kids: (rul) => ({
@@ -103,16 +103,30 @@ export default function language(): Language.Language<Met, Rul, Val> {
     }
   }
 
-  function isIndentable(zips: List<Zip>, exp: Exp): boolean {
-    let zip = zips.get(0)
-    if (zip === undefined) return false
-    if (isAppArg(zip) || isLamBod(zip)) return true
-    return false
+  function modifyIndent(f: (isIndented: boolean) => boolean, zip: Zip): Zip | undefined {
+    switch (zip.rul) {
+      case 'bnd': return undefined
+      case 'var': return undefined
+      case 'hol': return undefined
+      case 'app': return isAppArg(zip) ? { ...zip, val: { ...zip.val, indentedArg: f((zip.val as AppVal).indentedArg) } } : undefined
+      case 'lam': return isLamBod(zip) ? { ...zip, val: { ...zip.val, indentedArg: f((zip.val as LamVal).indentedBod) } } : undefined
+      case 'let':
+        const val = zip.val as LetVal
+        console.log("modifyIndent")
+        console.log("isLetImp(zip) = " + isLetImp(zip))
+        console.log("isLetBod(zip) = " + isLetBod(zip))
+        console.log("val", val)
+        return (
+          isLetImp(zip) ? { ...zip, val: { ...zip.val, indentedImp: f(val.indentedImp) } } :
+            isLetBod(zip) ? { ...zip, val: { ...zip.val, indentedBod: f(val.indentedBod) } } :
+              undefined
+        )
+    }
   }
 
   return {
     grammar,
     isParenthesized,
-    isIndentable
+    modifyIndent
   }
 }

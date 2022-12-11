@@ -245,7 +245,7 @@ export default function backend(language: Language<Met, Rul, Val>): Backend.Back
                         }
                     })()
                     if (exp === undefined) return undefined
-                    return { case: 'replace', exp }
+                    return { case: 'replace-exp', exp }
                 }
                 case 'select': {
                     // TODO: indent everything in selection

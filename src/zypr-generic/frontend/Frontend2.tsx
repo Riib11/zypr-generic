@@ -36,23 +36,25 @@ class ExpElement extends React.Component<ExpElementProps, ExpElementState> {
   }
 
   setHighlightCursorable(cursorable: 'true' | 'false'): void {
-    this.setState({
-      ...this.state,
-      highlight: {
-        ...this.state.highlight,
-        cursorable
-      }
-    })
+    // TODO: tmp disable until fix
+    // this.setState({
+    //   ...this.state,
+    //   highlight: {
+    //     ...this.state.highlight,
+    //     cursorable
+    //   }
+    // })
   }
 
   setHighlightSelectable(selectable: Orient | 'false'): void {
-    this.setState({
-      ...this.state,
-      highlight: {
-        ...this.state.highlight,
-        selectable
-      }
-    })
+    // TODO: tmp disable until fix
+    // this.setState({
+    //   ...this.state,
+    //   highlight: {
+    //     ...this.state.highlight,
+    //     selectable
+    //   }
+    // })
   }
 
   enableHighlight(relation: 'kid' | 'par', mode: 'cursorable' | 'selectable', event?: React.MouseEvent): void {
@@ -239,7 +241,7 @@ export default function frontend(backend: Backend<Met, Rul, Val, Dat>) {
       const indent =
         (elems: ((expElemPar: ExpElemPar) => JSX.Element)[]):
           ((expElemPar: ExpElemPar) => JSX.Element)[] => {
-          if (node.dat.indent !== undefined && node.dat.indent > 0) {
+          if (node.dat.indent !== undefined) {
             let str = ""
             for (var i = 0; i < node.dat.indent; i++) str += "  "
             return ([

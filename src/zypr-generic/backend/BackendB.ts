@@ -1,7 +1,6 @@
 import { List, Record, RecordOf } from "immutable";
-import { debug } from "../../Debug";
 import * as Backend from "../Backend";
-import { eqZip, eqZips, Grammar, Language, makeHole, unzipsExp, zipExp } from "../Language";
+import { eqZip, eqZips, Grammar, Language, makeHole, toggleIndent, unzipsExp, zipExp } from "../Language";
 import { Pre, Exp, Zip, Met, Rul, Val, AppVal, isAppArg, isLamBod, prettyPre, BndVal, isLetImp, isLetBod, LamVal, LetVal } from "../language/LanguageBeta";
 import { Node, ExpNode } from "../Node";
 import interactString from "../../StringInteraction";
@@ -48,7 +47,7 @@ export default function backend(language: Language<Met, Rul, Val>): Backend.Back
       case 'var': return env_
       case 'app': return env_.update('indentationLevel', (i) => isAppArg(zipPar) ? i + 1 : i)
       case 'lam': return env_.update('indentationLevel', (i) => isLamBod(zipPar) ? i + 1 : i)
-      case 'let': return env_.update('indentationLevel', (i) => isLetImp(zipPar) || isLetBod(zipPar) ? i + 1 : i)
+      case 'let': return env_.update('indentationLevel', (i) => isLetImp(zipPar) ? i + 1 : i)
       case 'hol': return env_
     }
   }
@@ -93,14 +92,22 @@ export default function backend(language: Language<Met, Rul, Val>): Backend.Back
         pre,
         isParenthesized: language.isParenthesized(zipPar === undefined ? List([]) : List([zipPar]), exp),
         indent: ((): number | undefined => {
-          return (
-            (
-              zipPar !== undefined &&
-              isAppArg(zipPar) &&
-              (zipPar.val as AppVal).indentedArg
-            )
-              ? env.indentationLevel
-              : undefined)
+          if (zipPar === undefined) return undefined
+          switch (zipPar.rul) {
+            case 'bnd': return undefined
+            case 'var': return undefined
+            case 'app': return isAppArg(zipPar) && (zipPar.val as AppVal).indentedArg ? env.indentationLevel : undefined
+            case 'lam': return isLamBod(zipPar) && (zipPar.val as LamVal).indentedBod ? env.indentationLevel : undefined
+            // TODO:HERE
+            case 'let':
+              const val = zipPar.val as LetVal
+              return (
+                isLetImp(zipPar) && val.indentedImp ? env.indentationLevel :
+                  isLetBod(zipPar) && val.indentedBod ? env.indentationLevel :
+                    undefined
+              )
+            case 'hol': return undefined
+          }
         })()
       },
       kids: kids.map(kid => kid.nodes),
@@ -219,7 +226,7 @@ export default function backend(language: Language<Met, Rul, Val>): Backend.Back
     if (st.mode.case === 'cursor' && st.mode.cursor.exp.met === 'bnd') {
       const label = interactString(event, (st.mode.cursor.exp.val as BndVal).label)
       if (label === undefined) return undefined
-      return { case: 'replace', exp: { ...st.mode.cursor.exp, val: { label } } }
+      return { case: 'replace-exp', exp: { ...st.mode.cursor.exp, val: { label } } }
     }
 
     if (event.ctrlKey || event.metaKey) {
@@ -231,33 +238,13 @@ export default function backend(language: Language<Met, Rul, Val>): Backend.Back
     }
     if (event.key === 'Tab') {
       event.preventDefault()
-      debug(0, "event: Tab")
       switch (st.mode.case) {
         case 'cursor': {
-          const exp: Exp | undefined = (() => {
-            switch (st.mode.cursor.exp.rul) {
-              case 'bnd': return undefined
-              case 'var': return undefined
-              case 'app': {
-                const val = st.mode.cursor.exp.val as AppVal
-                debug(0, "indenting at an app, where current indentArg = " + val.indentedArg)
-                return { ...st.mode.cursor.exp, dat: { ...val, indentedArg: !val.indentedArg } }
-              }
-              case 'lam': {
-                const val = st.mode.cursor.exp.val as LamVal
-                debug(0, "indenting at a lam, where current indentArg = " + val.indentedBod)
-                return { ...st.mode.cursor.exp, dat: { ...val, indentedBod: !val.indentedBod } }
-              }
-              case 'let': {
-                const val = st.mode.cursor.exp.val as LetVal
-                debug(0, "indenting at a lam, where current indentArg = " + val.indentedBod)
-                return { ...st.mode.cursor.exp, dat: { ...val, indentedBod: !val.indentedBod } }
-              }
-              case 'hol': return undefined
-            }
-          })()
-          if (exp === undefined) return undefined
-          return { case: 'replace', exp }
+          const zip = st.mode.cursor.zips.get(0)
+          if (zip === undefined) return undefined
+          const zipNew = toggleIndent(language, zip)
+          if (zipNew === undefined) return undefined
+          return { case: 'replace-zips', zips: st.mode.cursor.zips.set(0, zipNew) }
         }
         case 'select': {
           // TODO: indent everything in selection

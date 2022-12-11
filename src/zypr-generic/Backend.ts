@@ -55,7 +55,8 @@ export type Action<Met, Rul, Val>
     | { case: 'move_select', dir: Direction }
     | { case: 'set_cursor', cursor: Cursor<Met, Rul, Val> }
     | { case: 'set_select', select: Select<Met, Rul, Val> }
-    | { case: 'replace', exp: Exp<Met, Rul, Val> }
+    | { case: 'replace-exp', exp: Exp<Met, Rul, Val> }
+    | { case: 'replace-zips', zips: List<Zip<Met, Rul, Val>> }
     | { case: 'insert', zips: List<Zip<Met, Rul, Val>> }
     | { case: BasicAction }
 export type BasicAction = 'undo' | 'redo' | 'copy' | 'cut' | 'paste' | 'delete' | 'escape'
@@ -171,7 +172,7 @@ export function buildInterpretQueryString<Met, Rul, Val, Dat>(
         if (kids.length === 0) {
             switch (st.mode.case) {
                 case 'cursor': return [{
-                    case: 'replace',
+                    case: 'replace-exp',
                     exp: makeExpTemplate(gram, met, rul, val)
                 }]
                 case 'select': return []
@@ -227,7 +228,6 @@ export function buildBackend<Met, Rul, Val, Dat, Env>(
         // actions
         interpretQueryString: Props<Met, Rul, Val, Dat>['interpretQueryString'],
         interpretKeyboardCommandEvent: Props<Met, Rul, Val, Dat>['interpretKeyboardCommandEvent'],
-        // handleAction: Props<Met, Rul, Val, Dat>['handleAction'],
         // formatting
         makeInitEnv: (st: State<Met, Rul, Val, Dat>) => Env,
         formatExp: (st: State<Met, Rul, Val, Dat>, exp: Exp<Met, Rul, Val>, zipPar: Zip<Met, Rul, Val> | undefined) => (env: Env) => ExpNode<Met, Rul, Val, Dat>,
@@ -315,7 +315,7 @@ export function buildBackend<Met, Rul, Val, Dat, Env>(
                         return formatNodeStyle({ case: 'query-invalid', string: query.str }, kid)
                     } else {
                         switch (act.case) {
-                            case 'replace':
+                            case 'replace-exp':
                                 return (env) => {
                                     const expNode_new = formatNodeStyle({ case: 'query-replace-new' }, args.formatExp(st, act.exp, zipPar))(env)
                                     const expNode_old = formatNodeStyle({ case: 'query-replace-old' }, kid)(env)
@@ -363,19 +363,41 @@ export function buildBackend<Met, Rul, Val, Dat, Env>(
 
             handleAction: (act: Action<Met, Rul, Val>): EndoReadPart<Props<Met, Rul, Val, Dat>, State<Met, Rul, Val, Dat>> => {
                 switch (act.case) {
-                    case 'replace': {
-                        debug(0, "handleAction: replace")
+                    case 'replace-exp': {
                         return updateMode(mode => {
                             switch (mode.case) {
-                                case 'cursor': return {
-                                    case: 'cursor',
-                                    cursor: {
-                                        zips: mode.cursor.zips,
-                                        exp: act.exp
+                                case 'cursor':
+                                    return {
+                                        case: 'cursor',
+                                        cursor: {
+                                            zips: mode.cursor.zips,
+                                            exp: act.exp
+                                        }
                                     }
-                                }
                                 // can't replace a select with an exp
                                 case 'select': return undefined
+                            }
+                        })
+                    }
+                    case 'replace-zips': {
+                        return updateMode(mode => {
+                            switch (mode.case) {
+                                case 'cursor':
+                                    return {
+                                        case: 'cursor',
+                                        cursor: {
+                                            zips: act.zips,
+                                            exp: mode.cursor.exp
+                                        }
+                                    }
+                                case 'select':
+                                    return {
+                                        case: 'cursor',
+                                        cursor: {
+                                            zips: act.zips.concat(mode.select.zipsTop),
+                                            exp: mode.select.exp
+                                        }
+                                    }
                             }
                         })
                     }

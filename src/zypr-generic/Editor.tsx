@@ -60,6 +60,7 @@ export function modifyBackendState<Met, Rul, Val, Dat>(
     f: EndoReadPart<Backend.Props<Met, Rul, Val, Dat>, Backend.State<Met, Rul, Val, Dat>>
 ): void {
     const backend = f(editor.props.backend, editor.state.backend)
+    debug(0, "modifyBackendState success = " + (backend !== undefined))
     if (backend !== undefined)
         editor.setState({
             backend,
@@ -143,8 +144,7 @@ export function renderEditor<Met, Rul, Val, Dat>(
 
                 if (act !== undefined) {
                     event.preventDefault()
-                    modifyBackendState
-                        (editor, editor.props.backend.handleAction(act))
+                    modifyBackendState(editor, editor.props.backend.handleAction(act))
                 }
             }
         }
