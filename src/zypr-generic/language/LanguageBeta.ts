@@ -124,9 +124,26 @@ export default function language(): Language.Language<Met, Rul, Val> {
     }
   }
 
+  function isValidSelect(select: Language.Select<Met, Rul, Val>): boolean {
+    // check that the top and bot of select have same met
+    const zipsBot = Language.getZipsBot(select)
+    const preTop = zipsBot.get(-1)
+    if (preTop === undefined) return true
+    const preBot = select.exp as Pre
+    console.log("preTop", prettyPre(preTop))
+    console.log("preBot", prettyPre(preBot))
+    return preTop.met === preBot.met
+  }
+
+  function isValidCursor(cursor: Language.Cursor<Met, Rul, Val>): boolean {
+    return true
+  }
+
   return {
     grammar,
     isParenthesized,
-    modifyIndent
+    modifyIndent,
+    isValidSelect,
+    isValidCursor
   }
 }

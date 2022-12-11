@@ -3,7 +3,7 @@ import { debug } from '../Debug'
 import { EndoPart, EndoReadPart } from '../Endo'
 import { Direction } from './Direction'
 import { Query } from './Editor'
-import { enterCursor, Exp, Grammar, Language, makeExpTemplate, makeHole, makeZipTemplates, moveCursor, moveSelect, Pre, Zip } from './Language'
+import { Cursor, Exp, getZipsBot, Grammar, isValidRuleKidI, iZip, Language, makeExpTemplate, makeHole, makeZipTemplates, moveNext, movePrev, Orient, Pre, Select, setZipsBot, toZipsBot, unzipExp, unzipsExp, Zip, zipExp } from './Language'
 import { ExpNode, Node, NodeStyle } from './Node'
 
 // Env: render environment
@@ -16,7 +16,6 @@ export type Backend<Met, Rul, Val, Dat> = {
 
 export type Props<Met, Rul, Val, Dat> = {
     language: Language<Met, Rul, Val>,
-    isValidSelect: (select: Select<Met, Rul, Val>) => boolean,
     format: (st: State<Met, Rul, Val, Dat>, query: Query) => Node<Met, Rul, Val, Dat>[],
     // TODO: extend with completions
     interpretQueryString: (st: State<Met, Rul, Val, Dat>, str: string) => Action<Met, Rul, Val>[],
@@ -74,18 +73,12 @@ export type Mode<Met, Rul, Val>
     = { case: 'cursor', cursor: Cursor<Met, Rul, Val> }
     | { case: 'select', select: Select<Met, Rul, Val> }
 
-export type Cursor<Met, Rul, Val> = { zips: List<Zip<Met, Rul, Val>>, exp: Exp<Met, Rul, Val> }
-
-export type Select<Met, Rul, Val> = { zipsTop: List<Zip<Met, Rul, Val>>, zipsBot: List<Zip<Met, Rul, Val>>, exp: Exp<Met, Rul, Val>, orient: Orient }
-
 export type Clipboard<Met, Rul, Val>
     = { case: 'exp', exp: Exp<Met, Rul, Val> }
     | { case: 'zips', zips: List<Zip<Met, Rul, Val>> }
     | undefined
 
-// top: the top of the select can move
-// bot: the bot of the select can move
-export type Orient = 'top' | 'bot'
+
 
 // updateState
 
@@ -129,22 +122,6 @@ export function redo<Met, Rul, Val, Dat>(): EndoReadPart<Props<Met, Rul, Val, Da
 export function getStateMet<Met, Rul, Val, Dat>(gram: Grammar<Met, Rul, Val>, st: State<Met, Rul, Val, Dat>): Met {
     return getModeMet(gram, st.mode)
 }
-
-export function getZipsBot<Met, Rul, Val>(select: Select<Met, Rul, Val>) {
-    return toZipsBot(select.orient, select.zipsBot)
-}
-
-export function setZipsBot<Met, Rul, Val>(select: Select<Met, Rul, Val>, zips: List<Zip<Met, Rul, Val>>) {
-    return { ...select, zipsBot: toZipsBot(select.orient, zips) }
-}
-
-export function toZipsBot<Met, Rul, Val>(orient: Orient, zips: List<Zip<Met, Rul, Val>>) {
-    switch (orient) {
-        case 'top': return zips.reverse()
-        case 'bot': return zips
-    }
-}
-
 export function getModeMet<Met, Rul, Val, Dat>(
     gram: Grammar<Met, Rul, Val>,
     mode: Mode<Met, Rul, Val>
@@ -152,6 +129,206 @@ export function getModeMet<Met, Rul, Val, Dat>(
     switch (mode.case) {
         case 'cursor': return mode.cursor.exp.met
         case 'select': return mode.select.exp.met
+    }
+}
+
+export function enterCursor<Met, Rul, Val>(
+    gram: Grammar<Met, Rul, Val>,
+    mode: Mode<Met, Rul, Val>
+):
+    Cursor<Met, Rul, Val> {
+    switch (mode.case) {
+        case 'cursor': return mode.cursor
+        case 'select': return {
+            zips: mode.select.zipsTop,
+            exp: unzipsExp(gram, { zips: getZipsBot(mode.select), exp: mode.select.exp })
+        }
+    }
+}
+
+export function moveCursor<Met, Rul, Val>(
+    lang: Language<Met, Rul, Val>,
+    dir: Direction,
+    // cursor: Cursor<Exp<Met, Rul, Val>, Zip<Met, Rul, Val>>
+    mode: Mode<Met, Rul, Val>
+): Mode<Met, Rul, Val> | undefined {
+    const cursor = enterCursor(lang.grammar, mode)
+    switch (dir.case) {
+        case 'up': {
+            const zip = cursor.zips.get(0)
+            if (zip === undefined) return undefined
+            return {
+                case: 'cursor',
+                cursor: {
+                    zips: cursor.zips.shift(),
+                    exp: unzipExp(lang.grammar, zip, cursor.exp)
+                }
+            }
+        }
+        case 'down': {
+            const res = zipExp(lang.grammar, cursor.exp, dir.i)
+            if (res === undefined) return undefined
+            return {
+                case: 'cursor',
+                cursor: {
+                    zips: cursor.zips.unshift(res.zip),
+                    exp: res.exp
+                }
+            }
+        }
+        case 'left': {
+            const cursorPar = moveCursor(lang, { case: 'up' }, { case: 'cursor', cursor })
+            const zip = cursor.zips.get(0)
+            if (cursorPar === undefined || zip === undefined) return undefined
+            const i = iZip(zip) - 1
+            if (!isValidRuleKidI(lang.grammar, zip.rul, i)) return undefined
+            return moveCursor(lang, { case: 'down', i }, cursorPar)
+        }
+        case 'right': {
+            const cursorPar = moveCursor(lang, { case: 'up' }, { case: 'cursor', cursor })
+            const zip = cursor.zips.get(0)
+            if (cursorPar === undefined || zip === undefined) return undefined
+            const i = iZip(zip) + 1
+            if (!isValidRuleKidI(lang.grammar, zip.rul, i)) return undefined
+            return moveCursor(lang, { case: 'down', i }, cursorPar)
+        }
+        case 'next': {
+            const cursorNew = moveNext(lang, cursor)
+            return cursorNew !== undefined
+                ? { case: 'cursor', cursor: cursorNew }
+                : undefined
+        }
+        case 'prev': {
+            const cursorNew = movePrev(lang, cursor)
+            return cursorNew !== undefined
+                ? { case: 'cursor', cursor: cursorNew }
+                : undefined
+        }
+    }
+}
+
+export function fixSelect<Met, Rul, Val>(
+    gram: Grammar<Met, Rul, Val>,
+    select: Select<Met, Rul, Val>
+):
+    Mode<Met, Rul, Val> {
+    if (select.zipsBot.isEmpty())
+        return {
+            case: 'cursor',
+            cursor: { zips: select.zipsTop, exp: select.exp }
+        }
+    else return { case: 'select', select }
+}
+
+export function enterSelect<Met, Rul, Val>(
+    mode: Mode<Met, Rul, Val>,
+    orient: Orient,
+):
+    Select<Met, Rul, Val> {
+    switch (mode.case) {
+        case 'cursor': return {
+            zipsTop: mode.cursor.zips,
+            zipsBot: List([]),
+            exp: mode.cursor.exp,
+            orient
+        }
+        case 'select': return mode.select
+    }
+}
+
+// TODO: update with new move functions from Language
+export function moveSelect<Met, Rul, Val>(
+    gram: Grammar<Met, Rul, Val>,
+    dir: Direction,
+    mode: Mode<Met, Rul, Val>
+):
+    Mode<Met, Rul, Val> | undefined {
+    const select: Select<Met, Rul, Val> =
+        enterSelect(
+            mode,
+            ((): Orient => {
+                switch (dir.case) {
+                    case 'up': return 'top'
+                    case 'down': return 'bot'
+                    case 'left': return 'bot'
+                    case 'right': return 'bot'
+                    case 'next': return 'bot'
+                    case 'prev': return 'top'
+                }
+            })())
+    switch (dir.case) {
+        case 'up': {
+            switch (select.orient) {
+                case 'top': {
+                    const zip = select.zipsTop.get(0)
+                    if (zip === undefined) return undefined
+                    return fixSelect(gram, {
+                        zipsTop: select.zipsTop.shift(),
+                        zipsBot: select.zipsBot.unshift(zip),
+                        exp: select.exp,
+                        orient: 'top'
+                    })
+                }
+                case 'bot': {
+                    const zip = select.zipsBot.get(0)
+                    if (zip === undefined) return undefined
+                    return fixSelect(gram, {
+                        zipsTop: select.zipsTop,
+                        zipsBot: select.zipsBot.shift(),
+                        exp: unzipExp(gram, zip, select.exp),
+                        orient: 'bot'
+                    })
+                }
+            }
+        }
+        case 'down': {
+            switch (select.orient) {
+                case 'top': {
+                    const zip = select.zipsBot.get(0)
+                    if (zip === undefined) return undefined
+                    return fixSelect(gram, {
+                        zipsTop: select.zipsTop.unshift(zip),
+                        zipsBot: select.zipsBot.shift(),
+                        exp: select.exp,
+                        orient: 'top'
+                    })
+                }
+                case 'bot': {
+                    const res = zipExp(gram, select.exp, dir.i)
+                    if (res === undefined) return undefined
+                    const { exp, zip } = res
+                    return fixSelect(gram, {
+                        zipsTop: select.zipsTop,
+                        zipsBot: select.zipsBot.unshift(zip),
+                        exp: exp,
+                        orient: 'bot'
+                    })
+                }
+            }
+        }
+        case 'left': {
+            if (select.orient === 'top') return undefined
+
+            const selectPar = moveSelect(gram, { case: 'up' }, mode)
+            const zip = select.zipsBot.get(0)
+            if (selectPar === undefined || zip === undefined) return undefined
+
+            const i = iZip(zip) - 1
+            if (!isValidRuleKidI(gram, zip.rul, i)) return undefined
+
+            return moveSelect(gram, { case: 'down', i }, selectPar)
+        }
+        case 'right': {
+            if (select.orient === 'top') return undefined
+            const selectPar = moveSelect(gram, { case: 'up' }, mode)
+            const zip = select.zipsBot.get(0)
+            if (selectPar === undefined || zip === undefined) return undefined
+
+            const i = iZip(zip) + 1
+            if (!isValidRuleKidI(gram, zip.rul, i)) return undefined
+
+            return moveSelect(gram, { case: 'down', i }, selectPar)
+        }
     }
 }
 
@@ -223,7 +400,6 @@ type Env<Met, Rul, Val, Dat> = RecordOf<{
 export function buildBackend<Met, Rul, Val, Dat, Env>(
     args: {
         language: Language<Met, Rul, Val>,
-        isValidSelect: Props<Met, Rul, Val, Dat>['isValidSelect'], // is this necessary, or can be abstracted to Language?
         initExp: Exp<Met, Rul, Val>,
         // actions
         interpretQueryString: Props<Met, Rul, Val, Dat>['interpretQueryString'],
@@ -243,7 +419,7 @@ export function buildBackend<Met, Rul, Val, Dat, Env>(
                     .set('clipboard', { case: 'exp', exp: st.mode.cursor.exp })
 
                 case 'select':
-                    if (!args.isValidSelect(st.mode.select)) return undefined
+                    if (!args.language.isValidSelect(st.mode.select)) return undefined
                     return st
                         .set('mode', { case: 'cursor', cursor: { zips: st.mode.select.zipsTop, exp: st.mode.select.exp } })
                         .set('clipboard', { case: 'zips', zips: getZipsBot(st.mode.select) })
@@ -258,7 +434,7 @@ export function buildBackend<Met, Rul, Val, Dat, Env>(
                     .set('clipboard', { case: 'exp', exp: st.mode.cursor.exp })
 
                 case 'select':
-                    if (!args.isValidSelect(st.mode.select)) return undefined
+                    if (!args.language.isValidSelect(st.mode.select)) return undefined
                     return st
                         .set('clipboard', { case: 'zips', zips: getZipsBot(st.mode.select) })
             }
@@ -278,10 +454,10 @@ export function buildBackend<Met, Rul, Val, Dat, Env>(
                 case 'zips': {
                     switch (st.mode.case) {
                         case 'cursor':
-                            if (!args.isValidSelect({ zipsTop: st.mode.cursor.zips, zipsBot: toZipsBot('bot', st.clipboard.zips), exp: st.mode.cursor.exp, orient: 'bot' })) return undefined
+                            if (!args.language.isValidSelect({ zipsTop: st.mode.cursor.zips, zipsBot: toZipsBot('bot', st.clipboard.zips), exp: st.mode.cursor.exp, orient: 'bot' })) return undefined
                             return st.set('mode', { case: 'cursor', cursor: { zips: st.clipboard.zips.concat(st.mode.cursor.zips), exp: st.mode.cursor.exp } })
                         case 'select':
-                            if (!args.isValidSelect({ zipsTop: st.mode.select.zipsTop, zipsBot: toZipsBot('bot', st.clipboard.zips), exp: st.mode.select.exp, orient: 'bot' })) return undefined
+                            if (!args.language.isValidSelect({ zipsTop: st.mode.select.zipsTop, zipsBot: toZipsBot('bot', st.clipboard.zips), exp: st.mode.select.exp, orient: 'bot' })) return undefined
                             return st.set('mode', { case: 'cursor', cursor: { zips: st.clipboard.zips.concat(st.mode.select.zipsTop), exp: st.mode.select.exp } })
                     }
                 }
@@ -347,7 +523,7 @@ export function buildBackend<Met, Rul, Val, Dat, Env>(
                             ))(initEnv).nodes
                     }
                     case 'select':
-                        const isValid = args.isValidSelect(st.mode.select)
+                        const isValid = args.language.isValidSelect(st.mode.select)
                         return args.formatZip(st, st.mode.select.zipsTop, undefined)
                             (formatQueryAround(
                                 formatNodeStyle({ case: 'select-top', isValid },
@@ -419,7 +595,7 @@ export function buildBackend<Met, Rul, Val, Dat, Env>(
                             }
                         })
                     }
-                    case 'move_cursor': return updateMode((mode) => moveCursor(args.language.grammar, act.dir, mode))
+                    case 'move_cursor': return updateMode((mode) => moveCursor(args.language, act.dir, mode))
                     case 'move_select': return updateMode((mode) => moveSelect(args.language.grammar, act.dir, mode))
                     case 'delete': {
                         return updateMode((mode): Mode<Met, Rul, Val> | undefined => {
@@ -435,7 +611,7 @@ export function buildBackend<Met, Rul, Val, Dat, Env>(
                                     }
                                 }
                                 case 'select': {
-                                    if (!args.isValidSelect(mode.select)) return undefined
+                                    if (!args.language.isValidSelect(mode.select)) return undefined
                                     return {
                                         case: 'cursor',
                                         cursor: {

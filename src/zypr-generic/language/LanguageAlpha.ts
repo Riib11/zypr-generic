@@ -68,9 +68,10 @@ export default function language(): Language.Language<Met, Rul, Val> {
         }
     }
 
-    return {
-        grammar,
-        isParenthesized,
-        modifyIndent
-    }
+    // return {
+    //     grammar,
+    //     isParenthesized,
+    //     modifyIndent
+    // }
+    throw new Error("TODO: use new introduced stuff to Language");
 }

@@ -1,6 +1,6 @@
 import { List, Record, RecordOf } from "immutable";
 import * as Backend from "../Backend";
-import { eqZip, eqZips, Grammar, Language, makeHole, toggleIndent, unzipsExp, zipExp } from "../Language";
+import { Cursor, eqZip, eqZips, getZipsBot, Grammar, Language, makeHole, Select, toggleIndent, unzipsExp, zipExp } from "../Language";
 import { Pre, Exp, Zip, Met, Rul, Val, AppVal, isAppArg, isLamBod, prettyPre, BndVal, isLetImp, isLetBod, LamVal, LetVal } from "../language/LanguageBeta";
 import { Node, ExpNode } from "../Node";
 import interactString from "../../StringInteraction";
@@ -18,17 +18,6 @@ export type Dat = {
 }
 
 export default function backend(language: Language<Met, Rul, Val>): Backend.Backend<Met, Rul, Val, Dat> {
-
-  function isValidSelect(select: Backend.Select<Met, Rul, Val>): boolean {
-    // check that the top and bot of select have same met
-    const zipsBot = Backend.getZipsBot(select)
-    const preTop = zipsBot.get(-1)
-    if (preTop === undefined) return true
-    const preBot = select.exp as Pre
-    console.log("preTop", prettyPre(preTop))
-    console.log("preBot", prettyPre(preBot))
-    return preTop.met === preBot.met
-  }
 
   const makeInitEnv = (st: Backend.State<Met, Rul, Val, Dat>): Env => Record({
     st,
@@ -54,15 +43,15 @@ export default function backend(language: Language<Met, Rul, Val>): Backend.Back
 
   // TODO: bug when escapeSelect from orientation 'bot', the cursor stays at top
   function escapeSelect(
-    select: Backend.Select<Met, Rul, Val>
-  ): Backend.Cursor<Met, Rul, Val> {
+    select: Select<Met, Rul, Val>
+  ): Cursor<Met, Rul, Val> {
     switch (select.orient) {
       case 'top': return {
         zips: select.zipsTop,
-        exp: unzipsExp(language.grammar, Backend.getZipsBot(select), select.exp)
+        exp: unzipsExp(language.grammar, { zips: getZipsBot(select), exp: select.exp })
       }
       case 'bot': return {
-        zips: Backend.getZipsBot(select).concat(select.zipsTop),
+        zips: getZipsBot(select).concat(select.zipsTop),
         exp: select.exp
       }
     }
@@ -77,13 +66,13 @@ export default function backend(language: Language<Met, Rul, Val>): Backend.Back
     zipPar: Zip | undefined
   ): Node<Met, Rul, Val, Dat> => {
     const select = (() => {
-      const cursor1: Backend.Cursor<Met, Rul, Val> = (() => {
+      const cursor1: Cursor<Met, Rul, Val> = (() => {
         switch (env.st.mode.case) {
           case 'cursor': return env.st.mode.cursor
           case 'select': return escapeSelect(env.st.mode.select)
         }
       })()
-      const cursor2: Backend.Cursor<Met, Rul, Val> = { zips: env.zips, exp }
+      const cursor2: Cursor<Met, Rul, Val> = { zips: env.zips, exp }
       return getSelectBetweenCursor(cursor1, cursor2)
     })()
 
@@ -151,7 +140,7 @@ export default function backend(language: Language<Met, Rul, Val>): Backend.Back
         } else {
           return formatZip(st, zips.shift(), zipPar)((env): ExpNode<Met, Rul, Val, Dat> => {
             const kid = node(nextEnv(zip, env))
-            const exp = unzipsExp(language.grammar, List([zip]), kid.exp)
+            const exp = unzipsExp(language.grammar, { zips: List([zip]), exp: kid.exp })
 
             // is reversed
             const kidsLeft: ExpNode<Met, Rul, Val, Dat>[] =
@@ -261,7 +250,6 @@ export default function backend(language: Language<Met, Rul, Val>): Backend.Back
   return Backend.buildBackend<Met, Rul, Val, Dat, Env>(
     {
       language: language,
-      isValidSelect,
       makeInitEnv,
       formatExp,
       formatZip,
@@ -273,11 +261,11 @@ export default function backend(language: Language<Met, Rul, Val>): Backend.Back
 
 // TODO: shouldn't it orient the other way sometimes??
 export function getSelectBetweenCursor(
-  cursorStart: Backend.Cursor<Met, Rul, Val>,
-  cursorEnd: Backend.Cursor<Met, Rul, Val>
-): Backend.Select<Met, Rul, Val> | 'empty' | undefined {
+  cursorStart: Cursor<Met, Rul, Val>,
+  cursorEnd: Cursor<Met, Rul, Val>
+): Select<Met, Rul, Val> | 'empty' | undefined {
   function go(zipsStart: List<Zip>, zipsEnd: List<Zip>, up: List<Zip>):
-    Backend.Select<Met, Rul, Val> | 'empty' | undefined {
+    Select<Met, Rul, Val> | 'empty' | undefined {
     const zipStart = zipsStart.get(0)
     const zipEnd = zipsEnd.get(0)
     if (zipStart === undefined && zipEnd === undefined) {

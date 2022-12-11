@@ -3,4 +3,4 @@ export type Direction
     | { case: 'down', i: number }
     | { case: 'left' }
     | { case: 'right' }
-// | 'prev' | 'next'
+    | { case: 'next' } | { case: 'prev' }

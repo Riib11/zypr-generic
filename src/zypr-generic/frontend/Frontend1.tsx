@@ -2,9 +2,10 @@ import { List } from 'immutable';
 import * as React from 'react'
 import { debug, debug_ } from '../../Debug';
 import { EndoPart } from "../../Endo";
-import { Backend, Orient } from "../Backend";
+import { Backend } from "../Backend";
 import { Dat } from "../backend/BackendA";
 import Editor, { doAction, isMouseDown, renderEditor, setMouseDown, setMouseUp } from "../Editor";
+import { Orient } from '../Language';
 import { Met, Rul, Val, VarVal } from '../language/LanguageAlpha'
 import { Node } from "../Node";
 

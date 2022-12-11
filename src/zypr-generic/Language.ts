@@ -1,6 +1,6 @@
 import assert from "assert"
 import { List } from "immutable"
-import { Cursor, getZipsBot, Mode, Orient, Select } from "./Backend"
+import { Mode } from "./Backend"
 import { Direction } from "./Direction"
 
 export type Grammar<Met, Rul, Val> = {
@@ -13,27 +13,34 @@ export type Grammar<Met, Rul, Val> = {
 export type Language<Met, Rul, Val> = {
     grammar: Grammar<Met, Rul, Val>,
     isParenthesized: (zips: List<Zip<Met, Rul, Val>>, exp: Exp<Met, Rul, Val>) => boolean,
-    modifyIndent: (f: (isIndented: boolean) => boolean, zip: Zip<Met, Rul, Val>) => Zip<Met, Rul, Val> | undefined
+    modifyIndent: (f: (isIndented: boolean) => boolean, zip: Zip<Met, Rul, Val>) => Zip<Met, Rul, Val> | undefined,
+    isValidSelect: (select: Select<Met, Rul, Val>) => boolean
+    isValidCursor: (cursor: Cursor<Met, Rul, Val>) => boolean
 }
 
-// export function buildGrammar<Met extends string, Rul extends string, Val>(
-//     args: {
-//         rules: { [met in Met]: Rul[] },
-//         valueDefault: { [rul in Rul]: Val },
-//         kids: { [rul in Rul]: Met[] },
-//         holeRule: { [met in Met]: Rul },
-//         isParenthesized: Grammar<Met, Rul, Val>['isParenthesized'],
-//         isIndentable: Grammar<Met, Rul, Val>['isIndentable'],
-//     },
-// ): Grammar<Met, Rul, Val> {
-//     return {
-//         ...args,
-//         rules: (met) => args.rules[met],
-//         valueDefault: (rul) => args.valueDefault[rul],
-//         kids: (rul) => args.kids[rul],
-//         holeRule: (met) => args.holeRule[met],
-//     }
-// }
+export type Cursor<Met, Rul, Val> = { zips: List<Zip<Met, Rul, Val>>, exp: Exp<Met, Rul, Val> }
+
+export type Select<Met, Rul, Val> = { zipsTop: List<Zip<Met, Rul, Val>>, zipsBot: List<Zip<Met, Rul, Val>>, exp: Exp<Met, Rul, Val>, orient: Orient }
+
+// top: the top of the select can move
+// bot: the bot of the select can move
+export type Orient = 'top' | 'bot'
+
+
+export function getZipsBot<Met, Rul, Val>(select: Select<Met, Rul, Val>) {
+    return toZipsBot(select.orient, select.zipsBot)
+}
+
+export function setZipsBot<Met, Rul, Val>(select: Select<Met, Rul, Val>, zips: List<Zip<Met, Rul, Val>>) {
+    return { ...select, zipsBot: toZipsBot(select.orient, zips) }
+}
+
+export function toZipsBot<Met, Rul, Val>(orient: Orient, zips: List<Zip<Met, Rul, Val>>) {
+    switch (orient) {
+        case 'top': return zips.reverse()
+        case 'bot': return zips
+    }
+}
 
 export function isValidRuleKidI<Met, Rul, Val>
     (gram: Grammar<Met, Rul, Val>, rul: Rul, i: number): boolean {
@@ -41,6 +48,7 @@ export function isValidRuleKidI<Met, Rul, Val>
 }
 
 export function verifyRuleKidI<Met, Rul, Val>(gram: Grammar<Met, Rul, Val>, rul: Rul, i: number): void {
+    // TODO: tmp disable
     // assert(
     //     0 <= i && i < gram.kids(rul).length,
     //     "[verifyRuleKidI] for rule '" + rul + "', the kid index '" + i + "' is invalid"
@@ -68,11 +76,13 @@ export function verifyExp<Met, Rul, Val>(
     exp: Exp<Met, Rul, Val>
 ): Exp<Met, Rul, Val> {
     const kidMets = gram.kids(exp.rul)
+    // TODO: tmp disable
     // assert(
     //     kidMets.length === exp.kids.size,
     //     "[verifyExp] for exp '" + exp + "', the number of kids is invalid"
     // )
     exp.kids.zip(List(kidMets)).forEach(([kid, met]) => {
+        // TODO: tmp disable
         // assert(
         //     kid.met === met,
         //     "[verifyExp] for exp '" + exp +
@@ -131,27 +141,35 @@ export type Zip<Met, Rul, Val> = {
 // verify zip
 export function verifyZip<Met, Rul, Val>(gram: Grammar<Met, Rul, Val>, zip: Zip<Met, Rul, Val>): Zip<Met, Rul, Val> {
     const kidMets = gram.kids(zip.rul)
+    // TODO: tmp disable
     // assert(
     //     kidMets.length === zip.kidsLeft.size + zip.kidsRight.size + 1,
     //     "[verifyZip] for zip '" + zip + "', the number of kids is invalid"
     // )
-    zip.kidsLeft.reverse().zip(List(kidMets.slice(undefined, zip.kidsLeft.size)))
-        .forEach(([kid, met]) => {
-            // assert(
-            //     kid.met === met,
-            //     "[verifyZip] for zip '" + zip +
-            //     "', the meta of kid '" + kid + "' is invalid"
-            // )
-        })
-    zip.kidsRight.zip(List(kidMets.slice(undefined, zip.kidsLeft.size)))
-        .forEach(([kid, met]) => {
-            // assert(
-            //     kid.met === met,
-            //     "[verifyZip] for zip '" + zip +
-            //     "', the meta of kid '" + kid + "' is invalud"
-            // )
-        })
+    // TODO: tmp disable
+    // zip.kidsLeft.reverse().zip(List(kidMets.slice(undefined, zip.kidsLeft.size)))
+    //     .forEach(([kid, met]) => {
+    //         assert(
+    //             kid.met === met,
+    //             "[verifyZip] for zip '" + zip +
+    //             "', the meta of kid '" + kid + "' is invalid"
+    //         )
+    //     })
+    // TODO: tmp disable
+    // zip.kidsRight.zip(List(kidMets.slice(undefined, zip.kidsLeft.size)))
+    //     .forEach(([kid, met]) => {
+    //         assert(
+    //             kid.met === met,
+    //             "[verifyZip] for zip '" + zip +
+    //             "', the meta of kid '" + kid + "' is invalud"
+    //         )
+    //     })
     return zip
+}
+
+export function toggleIndent<Met, Rul, Val>
+    (lang: Language<Met, Rul, Val>, zip: Zip<Met, Rul, Val>): Zip<Met, Rul, Val> | undefined {
+    return lang.modifyIndent((b: boolean) => !b, zip)
 }
 
 export function makeZipTemplate<Met, Rul, Val>(
@@ -208,9 +226,7 @@ export function iZip<Met, Rul, Val>(zip: Zip<Met, Rul, Val>): number {
 }
 
 export function zipExp<Met, Rul, Val>(
-    gram: Grammar<Met, Rul, Val>,
-    exp: Exp<Met, Rul, Val>,
-    i: number
+    gram: Grammar<Met, Rul, Val>, exp: Exp<Met, Rul, Val>, i: number
 ): { zip: Zip<Met, Rul, Val>, exp: Exp<Met, Rul, Val> } | undefined {
     if (!isValidRuleKidI(gram, exp.rul, i)) return undefined
     return {
@@ -225,11 +241,25 @@ export function zipExp<Met, Rul, Val>(
     }
 }
 
-export function unzipExp<Met, Rul, Val>(
-    gram: Grammar<Met, Rul, Val>,
-    zip: Zip<Met, Rul, Val>,
-    exp: Exp<Met, Rul, Val>
-) {
+export function zipRight<Met, Rul, Val>
+    (gram: Grammar<Met, Rul, Val>, zip: Zip<Met, Rul, Val>, exp0: Exp<Met, Rul, Val>
+    ): { zip: Zip<Met, Rul, Val>, exp: Exp<Met, Rul, Val> } | undefined {
+    const exp1 = zip.kidsRight.get(0)
+    if (exp1 === undefined) return undefined
+    return { zip: { ...zip, kidsLeft: zip.kidsLeft.unshift(exp0), kidsRight: zip.kidsRight.shift() }, exp: exp1 }
+}
+
+export function zipLeft<Met, Rul, Val>
+    (gram: Grammar<Met, Rul, Val>, zip: Zip<Met, Rul, Val>, exp0: Exp<Met, Rul, Val>
+    ): { zip: Zip<Met, Rul, Val>, exp: Exp<Met, Rul, Val> } | undefined {
+    const exp1 = zip.kidsLeft.get(0)
+    if (exp1 === undefined) return undefined
+    return { zip: { ...zip, kidsLeft: zip.kidsLeft.shift(), kidsRight: zip.kidsRight.unshift(exp0) }, exp: exp1 }
+}
+
+export function unzipExp<Met, Rul, Val>
+    (gram: Grammar<Met, Rul, Val>, zip: Zip<Met, Rul, Val>, exp: Exp<Met, Rul, Val>
+    ): Exp<Met, Rul, Val> {
     const kidMets = gram.kids(zip.rul)
     // verify that exp can fit into zip
     // assert(kidMets[zip.kidsLeft.size] === exp.met)
@@ -245,202 +275,104 @@ export function unzipExp<Met, Rul, Val>(
 }
 
 export function unzipsExp<Met, Rul, Val>(
-    gram: Grammar<Met, Rul, Val>,
-    zips: List<Zip<Met, Rul, Val>>,
-    exp: Exp<Met, Rul, Val>
-):
-    Exp<Met, Rul, Val> {
-    const zip = zips.get(0)
-    if (zip === undefined) return exp
-    return unzipsExp(gram, zips.shift(), unzipExp(gram, zip, exp))
+    gram: Grammar<Met, Rul, Val>, csr: Cursor<Met, Rul, Val>
+): Exp<Met, Rul, Val> {
+    const zip = csr.zips.get(0)
+    if (zip === undefined) return csr.exp
+    return unzipsExp(gram, { zips: csr.zips.shift(), exp: unzipExp(gram, zip, csr.exp) })
 }
 
-export function enterCursor<Met, Rul, Val>(
-    gram: Grammar<Met, Rul, Val>,
-    mode: Mode<Met, Rul, Val>
-):
-    Cursor<Met, Rul, Val> {
-    switch (mode.case) {
-        case 'cursor': return mode.cursor
-        case 'select': return {
-            zips: mode.select.zipsTop,
-            exp: unzipsExp(gram, getZipsBot(mode.select), mode.select.exp)
+// move to bot-left-most valid cusror position
+export function moveBotLeft<Met, Rul, Val>(lang: Language<Met, Rul, Val>, csr0: Cursor<Met, Rul, Val>): Cursor<Met, Rul, Val> | undefined {
+    // try moving down
+    const csr1 = moveNextDown(lang, csr0)
+    if (csr1 !== undefined) {
+        // if we can move down, then recurse
+        const csr2 = moveBotLeft(lang, csr1)
+        // if recurse failed, then try to return here
+        if (csr2 === undefined) {
+            // if here isn't a valid cursor, then fail
+            if (!lang.isValidCursor(csr1)) return undefined
+            // return here
+            return csr1
         }
+        // return recursive result
+        return csr2
+    }
+    // if we can't move down then try to return here
+    if (csr1 === undefined) {
+        // if here isn't a valid cursor, then fail
+        if (!lang.isValidCursor(csr0)) return undefined
+        // return here
+        return csr0
     }
 }
 
-export function moveCursor<Met, Rul, Val>(
-    gram: Grammar<Met, Rul, Val>,
-    dir: Direction,
-    // cursor: Cursor<Exp<Met, Rul, Val>, Zip<Met, Rul, Val>>
-    mode: Mode<Met, Rul, Val>
-): Mode<Met, Rul, Val> | undefined {
-    const cursor = enterCursor(gram, mode)
-    switch (dir.case) {
-        case 'up': {
-            const zip = cursor.zips.get(0)
-            if (zip === undefined) return undefined
-            return {
-                case: 'cursor',
-                cursor: {
-                    zips: cursor.zips.shift(),
-                    exp: unzipExp(gram, zip, cursor.exp)
-                }
-            }
-        }
-        case 'down': {
-            const res = zipExp(gram, cursor.exp, dir.i)
-            if (res === undefined) return undefined
-            return {
-                case: 'cursor',
-                cursor: {
-                    zips: cursor.zips.unshift(res.zip),
-                    exp: res.exp
-                }
-            }
-        }
-        case 'left': {
-            const cursorPar = moveCursor(gram, { case: 'up' }, { case: 'cursor', cursor })
-            const zip = cursor.zips.get(0)
-            if (cursorPar === undefined || zip === undefined) return undefined
-            const i = iZip(zip) - 1
-            if (!isValidRuleKidI(gram, zip.rul, i)) return undefined
-            return moveCursor(gram, { case: 'down', i }, cursorPar)
-        }
-        case 'right': {
-            const cursorPar = moveCursor(gram, { case: 'up' }, { case: 'cursor', cursor })
-            const zip = cursor.zips.get(0)
-            if (cursorPar === undefined || zip === undefined) return undefined
-            const i = iZip(zip) + 1
-            if (!isValidRuleKidI(gram, zip.rul, i)) return undefined
-            return moveCursor(gram, { case: 'down', i }, cursorPar)
-        }
+// move to bot-right-most valid cusror position
+export function moveBotRight<Met, Rul, Val>(lang: Language<Met, Rul, Val>, csr0: Cursor<Met, Rul, Val>): Cursor<Met, Rul, Val> | undefined {
+    throw new Error("TODO");
+}
+
+// move to next valid cursor position
+export function moveNext<Met, Rul, Val>(lang: Language<Met, Rul, Val>, csr0: Cursor<Met, Rul, Val>): Cursor<Met, Rul, Val> | undefined {
+    // try to move next down
+    const csr1 = moveNextDown(lang, csr0)
+    // if that succeeds, then return it
+    if (csr1 !== undefined) return csr1
+
+    // otherwise, we need to step up until we can step right
+    let zips0 = csr0.zips
+    let exp0 = csr0.exp
+    for (let i = 0; i < zips0.size; i++) {
+        // zip up
+        const zip = zips0.get(i) as Zip<Met, Rul, Val>
+        zips0 = zips0.shift()
+        exp0 = unzipExp(lang.grammar, zip, exp0)
+        // try to zip right
+        const res0 = zipRight(lang.grammar, zip, exp0)
+        if (res0 === undefined) continue
+        // move to bot-left
+        const res1 = moveBotLeft(lang, { zips: zips0.unshift(res0.zip), exp: res0.exp })
+        if (res1 === undefined) continue
+        return res1
     }
+    return undefined
 }
 
-export function fixSelect<Met, Rul, Val>(
-    gram: Grammar<Met, Rul, Val>,
-    select: Select<Met, Rul, Val>
-):
-    Mode<Met, Rul, Val> {
-    if (select.zipsBot.isEmpty())
-        return {
-            case: 'cursor',
-            cursor: { zips: select.zipsTop, exp: select.exp }
-        }
-    else return { case: 'select', select }
+export function moveNextDown<Met, Rul, Val>(lang: Language<Met, Rul, Val>, csr0: Cursor<Met, Rul, Val>): Cursor<Met, Rul, Val> | undefined {
+    const res = zipExp(lang.grammar, csr0.exp, 0)
+    if (res === undefined) return undefined
+    const csr1 = { zips: csr0.zips.unshift(res.zip), exp: res.exp }
+    // if moving down once yields an invalid cursor, then move down again
+    if (!lang.isValidCursor(csr1)) return moveNextDown(lang, csr1)
+    return csr1
 }
 
-export function enterSelect<Met, Rul, Val>(
-    mode: Mode<Met, Rul, Val>,
-    orient: Orient,
-):
-    Select<Met, Rul, Val> {
-    switch (mode.case) {
-        case 'cursor': return {
-            zipsTop: mode.cursor.zips,
-            zipsBot: List([]),
-            exp: mode.cursor.exp,
-            orient
-        }
-        case 'select': return mode.select
+// move to previous valid cursor position
+export function movePrev<Met, Rul, Val>(lang: Language<Met, Rul, Val>, csr0: Cursor<Met, Rul, Val>): Cursor<Met, Rul, Val> | undefined {
+
+    let zips0 = csr0.zips
+    let exp0 = csr0.exp
+
+    function goUp(zip: Zip<Met, Rul, Val>) {
+        zips0 = zips0.shift()
+        exp0 = unzipExp(lang.grammar, zip, exp0)
     }
-}
 
-export function moveSelect<Met, Rul, Val>(
-    gram: Grammar<Met, Rul, Val>,
-    dir: Direction,
-    mode: Mode<Met, Rul, Val>
-):
-    Mode<Met, Rul, Val> | undefined {
-    const select: Select<Met, Rul, Val> =
-        enterSelect(
-            mode,
-            ((): Orient => {
-                switch (dir.case) {
-                    case 'up': return 'top'
-                    case 'down': return 'bot'
-                    case 'left': return 'bot'
-                    case 'right': return 'bot'
-                }
-            })())
-    switch (dir.case) {
-        case 'up': {
-            switch (select.orient) {
-                case 'top': {
-                    const zip = select.zipsTop.get(0)
-                    if (zip === undefined) return undefined
-                    return fixSelect(gram, {
-                        zipsTop: select.zipsTop.shift(),
-                        zipsBot: select.zipsBot.unshift(zip),
-                        exp: select.exp,
-                        orient: 'top'
-                    })
-                }
-                case 'bot': {
-                    const zip = select.zipsBot.get(0)
-                    if (zip === undefined) return undefined
-                    return fixSelect(gram, {
-                        zipsTop: select.zipsTop,
-                        zipsBot: select.zipsBot.shift(),
-                        exp: unzipExp(gram, zip, select.exp),
-                        orient: 'bot'
-                    })
-                }
-            }
-        }
-        case 'down': {
-            switch (select.orient) {
-                case 'top': {
-                    const zip = select.zipsBot.get(0)
-                    if (zip === undefined) return undefined
-                    return fixSelect(gram, {
-                        zipsTop: select.zipsTop.unshift(zip),
-                        zipsBot: select.zipsBot.shift(),
-                        exp: select.exp,
-                        orient: 'top'
-                    })
-                }
-                case 'bot': {
-                    const res = zipExp(gram, select.exp, dir.i)
-                    if (res === undefined) return undefined
-                    const { exp, zip } = res
-                    return fixSelect(gram, {
-                        zipsTop: select.zipsTop,
-                        zipsBot: select.zipsBot.unshift(zip),
-                        exp: exp,
-                        orient: 'bot'
-                    })
-                }
-            }
-        }
-        case 'left': {
-            if (select.orient === 'top') return undefined
-
-            const selectPar = moveSelect(gram, { case: 'up' }, mode)
-            const zip = select.zipsBot.get(0)
-            if (selectPar === undefined || zip === undefined) return undefined
-
-            const i = iZip(zip) - 1
-            if (!isValidRuleKidI(gram, zip.rul, i)) return undefined
-
-            return moveSelect(gram, { case: 'down', i }, selectPar)
-        }
-        case 'right': {
-            if (select.orient === 'top') return undefined
-            const selectPar = moveSelect(gram, { case: 'up' }, mode)
-            const zip = select.zipsBot.get(0)
-            if (selectPar === undefined || zip === undefined) return undefined
-
-            const i = iZip(zip) + 1
-            if (!isValidRuleKidI(gram, zip.rul, i)) return undefined
-
-            return moveSelect(gram, { case: 'down', i }, selectPar)
-        }
+    for (let i = 0; i < zips0.size; i++) {
+        // try to move left
+        const zip = csr0.zips.get(i) as Zip<Met, Rul, Val>
+        const res0 = zipLeft(lang.grammar, zip, exp0)
+        if (res0 === undefined) { goUp(zip); continue }
+        const csr1 = { zips: csr0.zips.unshift(res0.zip), exp: res0.exp }
+        // move to bot-right
+        const csr2 = moveBotRight(lang, csr1)
+        if (csr2 === undefined) { goUp(zip); continue }
+        return csr2
     }
-}
 
-export function toggleIndent<Met, Rul, Val>
-    (lang: Language<Met, Rul, Val>, zip: Zip<Met, Rul, Val>): Zip<Met, Rul, Val> | undefined {
-    return lang.modifyIndent((b: boolean) => !b, zip)
+    // stop at top (zips should be empty)
+    const csr3 = { zips: zips0, exp: exp0 }
+    if (!lang.isValidCursor(csr3)) return undefined
+    return csr3
 }

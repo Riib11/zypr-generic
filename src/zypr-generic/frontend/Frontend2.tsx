@@ -1,7 +1,8 @@
 import * as React from 'react'
-import { Backend, Orient } from "../Backend";
+import { Backend } from '../Backend';
 import { Dat } from "../backend/BackendB";
 import Editor, { doAction, isMouseDown, renderEditor, setMouseDown, setMouseUp } from "../Editor";
+import { Orient } from '../Language';
 import { BndVal, Met, Rul, Val, VarVal } from '../language/LanguageBeta'
 import { Node } from "../Node";
 

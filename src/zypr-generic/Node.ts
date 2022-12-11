@@ -1,5 +1,4 @@
-import { Cursor, Orient, Select } from "./Backend"
-import { Exp } from "./Language"
+import { Cursor, Exp, Orient, Select } from "./Language"
 
 export type Node<Met, Rul, Val, Dat> = {
     dat: Dat,
