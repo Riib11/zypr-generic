@@ -73,7 +73,7 @@ export default function language(): Language.Language<Met, Rul, Val> {
       'var': { label: "" } as VarVal,
       'app': { indentedArg: false } as AppVal,
       'lam': { indentedBod: false } as LamVal,
-      'let': { indentedImp: false, indentedBod: false } as LetVal,
+      'let': { indentedImp: false, indentedBod: true } as LetVal,
       'hol': {} as Val
     }[rul]),
     kids: (rul) => ({
