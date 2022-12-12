@@ -106,14 +106,13 @@ export function verifyExp<Met, Rul, Val>(
     //     kidMets.length === exp.kids.size,
     //     "[verifyExp] for exp '" + exp + "', the number of kids is invalid"
     // )
-    exp.kids.zip(List(kidMets)).forEach(([kid, met]) => {
-        // TODO: tmp disable
-        // assert(
-        //     kid.met === met,
-        //     "[verifyExp] for exp '" + exp +
-        //     "', the meta of kid '" + kid + "' is invalid ")
-    }
-    )
+    // TODO: tmp disable
+    //     exp.kids.zip(List(kidMets)).forEach(([kid, met]) => {
+    //     assert(
+    //         kid.met === met,
+    //         "[verifyExp] for exp '" + exp +
+    //         "', the meta of kid '" + kid + "' is invalid ")
+    // })
     return exp
 }
 

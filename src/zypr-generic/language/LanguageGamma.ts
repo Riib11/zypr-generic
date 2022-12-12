@@ -87,7 +87,7 @@ export type TmLamVal = { indentedBod: boolean }
 export type TmVarVal = { uuid: string }
 export type TmLetTmVal = { indentedImp: boolean, indentedBod: boolean }
 export type TmLetTyVal = { indentedImp: boolean, indentedBod: boolean }
-export type TmDatVal = {}
+export type TmDatVal = { indentedBod: boolean }
 export type TmBouTyVal = {}
 export type TmBouCxVal = {}
 export type TmBufVal = { indentedImp: boolean, indentedBod: boolean }
@@ -112,7 +112,7 @@ export const kid_ixs = {
   'tm # app': { apl: 0, arg: 1 },
   'tm # lam': { bnd: 0, dom: 1, bod: 2 },
   'tm # var': {},
-  'tm # let-tm': { bnd: 0, sig: 1, imp: 2, bod: 3 },
+  'tm # let-tm': { bnd: 0, prms: 1, sig: 2, imp: 3, bod: 4 },
   'tm # dat': { bnd: 0, prms: 1, ctrs: 2, bod: 3 },
   'tm # let-ty': { bnd: 0, prms: 1, imp: 2, bod: 3 },
   'tm # bou-ty': { bod: 0 },
@@ -194,7 +194,7 @@ export default function language(): Language.Language<Met, Rul, Val> {
       'tm # app': ['tm', 'tm'] as Met[],
       'tm # lam': ['bnd-tm', 'ty', 'tm'] as Met[],
       'tm # var': [] as Met[],
-      'tm # let-tm': ['bnd-tm', 'ty', 'tm', 'tm'] as Met[],
+      'tm # let-tm': ['bnd-tm', 'prms', 'ty', 'tm', 'tm'] as Met[],
       'tm # dat': ['bnd-ty', 'bnd-ty list', 'ctr list', 'tm'] as Met[],
       'tm # let-ty': ['bnd-ty', 'bnd-ty list', 'ty', 'tm'] as Met[],
       'tm # bou-ty': ['tm'] as Met[],
@@ -256,11 +256,24 @@ export default function language(): Language.Language<Met, Rul, Val> {
           default: return false
         }
       }
+      case 'tm # dat': {
+        if (Language.iZip(zip) === kid_ixs['tm # dat'].prms) return true
+        return false
+      }
+      case 'tm # let-ty': {
+        if (Language.iZip(zip) === kid_ixs['tm # let-ty'].prms) return true
+        return false
+      }
+      case 'tm # let-tm': {
+        if (Language.iZip(zip) === kid_ixs['tm # let-tm'].prms) return true
+        return false
+      }
       default: return false
     }
   }
 
   function modifyIndent(f: (isIndented: boolean) => boolean, zip: Zip): Zip | undefined {
+    // TODO: update to use `kid_ixs`
     switch (zip.rul) {
       case 'bnd-ty': return undefined
       case 'bnd-tm': return undefined
@@ -276,29 +289,34 @@ export default function language(): Language.Language<Met, Rul, Val> {
       // tm
       case 'tm # app': {
         switch (Language.iZip(zip)) {
-          case 1: return { ...zip, val: { indentedArg: !(zip.val as TmAppVal).indentedArg } as TmAppVal }
+          case 1: return { ...zip, val: { ...zip.val as TmAppVal, indentedArg: !(zip.val as TmAppVal).indentedArg } as TmAppVal }
           default: return undefined
         }
       }
       case 'tm # lam': {
         switch (Language.iZip(zip)) {
-          case 2: return { ...zip, val: { indentedBod: !(zip.val as TmLamVal).indentedBod } as TmLamVal }
+          case 2: return { ...zip, val: { ...zip.val as TmLamVal, indentedBod: !(zip.val as TmLamVal).indentedBod } as TmLamVal }
           default: return undefined
         }
       }
       case 'tm # var': return undefined
       case 'tm # let-tm': {
         switch (Language.iZip(zip)) {
-          case 2: return { ...zip, val: { indentedImp: !(zip.val as TmLetTmVal).indentedImp } as TmLetTmVal }
-          case 3: return { ...zip, val: { indentedBod: !(zip.val as TmLetTmVal).indentedBod } as TmLetTmVal }
+          case 3: return { ...zip, val: { ...zip.val as TmLetTmVal, indentedImp: !(zip.val as TmLetTmVal).indentedImp } as TmLetTmVal }
+          case 4: return { ...zip, val: { ...zip.val as TmLetTmVal, indentedBod: !(zip.val as TmLetTmVal).indentedBod } as TmLetTmVal }
           default: return undefined
         }
       }
-      case 'tm # dat': return undefined
+      case 'tm # dat': {
+        switch (Language.iZip(zip)) {
+          case kid_ixs['tm # dat'].bod: return { ...zip, val: { ...zip.val as TmDatVal, indentedBod: !(zip.val as TmDatVal).indentedBod } as TmDatVal }
+          default: return undefined
+        }
+      }
       case 'tm # let-ty': {
         switch (Language.iZip(zip)) {
-          case 2: return { ...zip, val: { indentedImp: !(zip.val as TmLetTyVal).indentedImp } as TmLetTyVal }
-          case 3: return { ...zip, val: { indentedBod: !(zip.val as TmLetTyVal).indentedBod } as TmLetTyVal }
+          case 2: return { ...zip, val: { ...zip.val as TmLetTyVal, indentedImp: !(zip.val as TmLetTyVal).indentedImp } as TmLetTyVal }
+          case 3: return { ...zip, val: { ...zip.val as TmLetTyVal, indentedBod: !(zip.val as TmLetTyVal).indentedBod } as TmLetTyVal }
           default: return undefined
         }
       }
@@ -306,8 +324,8 @@ export default function language(): Language.Language<Met, Rul, Val> {
       case 'tm # bou-cx': return undefined
       case 'tm # buf': {
         switch (Language.iZip(zip)) {
-          case 1: return { ...zip, val: { indentedImp: !(zip.val as TmBufVal).indentedImp } as TmBufVal }
-          case 2: return { ...zip, val: { indentedBod: !(zip.val as TmBufVal).indentedBod } as TmBufVal }
+          case 1: return { ...zip, val: { ...zip.val as TmBufVal, indentedImp: !(zip.val as TmBufVal).indentedImp } as TmBufVal }
+          case 2: return { ...zip, val: { ...zip.val as TmBufVal, indentedBod: !(zip.val as TmBufVal).indentedBod } as TmBufVal }
           default: return undefined
         }
       }

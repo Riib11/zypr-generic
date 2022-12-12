@@ -259,7 +259,7 @@ export default function frontend(backend: Backend<Met, Rul, Val, Dat>) {
           if (node.style?.case === 'query-invalid')
             return ([] as ((expElemPar: ExpElemPar) => JSX.Element)[]).concat(
               // query string
-              [(_) => <div className="node-query-invalid-string"></div>],
+              [(_) => <div className="node-query-invalid-string">{editor.state.query.str}</div>],
               elems
             )
           return elems
@@ -397,6 +397,7 @@ export default function frontend(backend: Backend<Met, Rul, Val, Dat>) {
             paren([
               punc("let", "let"),
               node.kids[kid_ixs['tm # let-tm'].bnd].map(kid => renderAux(go(kid), classNames.concat(["tm-let-tm-bnd"]))),
+              node.kids[kid_ixs['tm # let-tm'].prms].map(kid => renderAux(go(kid), classNames.concat(["tm-let-tm-prms"]))),
               punc("colon", ":"),
               node.kids[kid_ixs['tm # let-tm'].sig].map(kid => renderAux(go(kid), classNames.concat(["tm-let-tm-sig"]))),
               punc("equal", "="),
@@ -412,7 +413,6 @@ export default function frontend(backend: Backend<Met, Rul, Val, Dat>) {
             paren([
               punc("data", "data"),
               node.kids[kid_ixs['tm # dat'].bnd].map(kid => renderAux(go(kid), classNames.concat(["tm-dat-bnd"]))),
-              punc("space", " "),
               node.kids[kid_ixs['tm # dat'].prms].map(kid => renderAux(go(kid), classNames.concat(["tm-dat-prms"]))),
               punc("equal", "="),
               node.kids[kid_ixs['tm # dat'].ctrs].map(kid => renderAux(go(kid), classNames.concat(["tm-dat-ctrs"]))),
@@ -427,7 +427,6 @@ export default function frontend(backend: Backend<Met, Rul, Val, Dat>) {
             paren([
               punc("type", "type"),
               node.kids[kid_ixs['tm # let-ty'].bnd].map(kid => renderAux(go(kid), classNames.concat(["tm-let-ty-bnd"]))),
-              punc("space", " "),
               node.kids[kid_ixs['tm # let-ty'].prms].map(kid => renderAux(go(kid), classNames.concat(["tm-let-ty-prms"]))),
               punc("equal", "="),
               node.kids[kid_ixs['tm # let-ty'].imp].map(kid => renderAux(go(kid), classNames.concat(["tm-let-ty-imp"]))),

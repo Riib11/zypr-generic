@@ -48,12 +48,12 @@ export default function backend(language: Language<Met, Rul, Val>): Backend.Back
       case 'tm # app': return env_.update('indentationLevel', (i) => iZip(zipPar) === kid_ixs['tm # app'].arg ? i + 1 : i)
       case 'tm # lam': return env_.update('indentationLevel', (i) => iZip(zipPar) === kid_ixs['tm # lam'].bod ? i + 1 : i)
       case 'tm # var': return env_
-      case 'tm # let-tm': return env_.update('indentationLevel', (i) => [kid_ixs['tm # let-tm'].imp, kid_ixs['tm # let-tm'].bod].includes(iZip(zipPar)) ? i + 1 : i)
-      case 'tm # dat': return env_.update('indentationLevel', (i) => [kid_ixs['tm # dat'].bod].includes(iZip(zipPar)) ? i + 1 : i)
-      case 'tm # let-ty': return env_.update('indentationLevel', (i) => [kid_ixs['tm # let-ty'].bod].includes(iZip(zipPar)) ? i + 1 : i)
+      case 'tm # let-tm': return env_.update('indentationLevel', (i) => iZip(zipPar) === kid_ixs['tm # let-tm'].imp ? i + 1 : i)
+      case 'tm # dat': return env_
+      case 'tm # let-ty': return env_.update('indentationLevel', (i) => iZip(zipPar) === kid_ixs['tm # let-ty'].imp ? i + 1 : i)
       case 'tm # bou-ty': return env_
       case 'tm # bou-cx': return env_
-      case 'tm # buf': return env_.update('indentationLevel', (i) => [kid_ixs['tm # buf'].bod].includes(iZip(zipPar)) ? i + 1 : i)
+      case 'tm # buf': return env_.update('indentationLevel', (i) => iZip(zipPar) === kid_ixs['tm # buf'].imp ? i + 1 : i)
       case 'tm # hol': return env_
       // lists
       case 'bnd-ty list # cons': return env_
@@ -249,7 +249,7 @@ export default function backend(language: Language<Met, Rul, Val>): Backend.Back
       case 'ty': {
         switch (str) {
           case "->": return makeResult('ty # arr')
-          default: return { rul: 'ty # neu', val: { label: str } }
+          default: return undefined //TODO: lookup var
         }
       }
       case 'tm': {
@@ -260,7 +260,7 @@ export default function backend(language: Language<Met, Rul, Val>): Backend.Back
           case "type": return makeResult('tm # let-ty')
           case "data": return makeResult('tm # dat')
           case "buf": return makeResult('tm # buf')
-          default: return { rul: 'tm # var', val: { label: str } }
+          default: return undefined // TODO: lookup var
         }
       }
       case 'bnd-ty list': {
