@@ -231,14 +231,12 @@ export default function backend(language: Language<Met, Rul, Val>): Backend.Back
         }
         if (event.key === 'Tab') {
             event.preventDefault()
-            debug(0, "event: Tab")
             switch (st.mode.case) {
                 case 'cursor': {
                     const exp: Exp | undefined = (() => {
                         switch (st.mode.cursor.exp.rul) {
                             case 'app': {
                                 const val = st.mode.cursor.exp.val as AppVal
-                                debug(0, "indenting at an app, where current indentArg = " + val.indentedArg)
                                 return { ...st.mode.cursor.exp, dat: { ...val, indentedArg: !val.indentedArg } }
                             }
                             default: return undefined

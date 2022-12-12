@@ -149,7 +149,6 @@ export function enterCursor<Met, Rul, Val>(
 export function moveCursor<Met, Rul, Val>(
     lang: Language<Met, Rul, Val>,
     dir: Direction,
-    // cursor: Cursor<Exp<Met, Rul, Val>, Zip<Met, Rul, Val>>
     mode: Mode<Met, Rul, Val>
 ): Mode<Met, Rul, Val> | undefined {
     const cursor = enterCursor(lang.grammar, mode)

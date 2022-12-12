@@ -328,7 +328,7 @@ export default function frontend(backend: Backend<Met, Rul, Val, Dat>) {
                 node.kids[0].map(kid => renderAux(go(kid), classNames.concat(["node-exp-let-bnd"]))),
                 [(_: ExpElemPar) => <div className="node punc punc-assign">=</div>],
                 node.kids[1].map(kid => renderAux(go(kid), classNames.concat(["node-exp-let-imp"]))),
-                [(_: ExpElemPar) => <div className="node punc punc-in">in</div>],
+                node.kids[2][0].dat.indent === undefined ? [(_: ExpElemPar) => <div className="node punc punc-in">in</div>] : [],
                 node.kids[2].map(kid => renderAux(go(kid), classNames.concat(["node-exp-let-bod"]))),
               ].flat()),
               ["node-exp-lam"]

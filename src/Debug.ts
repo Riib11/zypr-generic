@@ -1,7 +1,8 @@
-const __debug_level = 100
+const __debug_level = 0
 
 export function debug(level: number, ...xs: any[]) {
-    console.log(...["[>]"].concat(xs))
+    if (level <= __debug_level)
+        console.log(...["[>]"].concat(xs))
 }
 
 export function debug_(level: number, ...xs: any[]) { }
