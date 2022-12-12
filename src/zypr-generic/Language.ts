@@ -269,9 +269,7 @@ export function iZip<Met, Rul, Val>(zip: Zip<Met, Rul, Val>): number {
     return zip.kidsLeft.size
 }
 
-export function zipExp<Met, Rul, Val>(
-    gram: Grammar<Met, Rul, Val>, exp: Exp<Met, Rul, Val>, i: number
-): { zip: Zip<Met, Rul, Val>, exp: Exp<Met, Rul, Val> } | undefined {
+export function zipExp<Met, Rul, Val>(gram: Grammar<Met, Rul, Val>, exp: Exp<Met, Rul, Val>, i: number): { zip: Zip<Met, Rul, Val>, exp: Exp<Met, Rul, Val> } | undefined {
     if (!isValidRuleKidI(gram, exp.rul, i)) return undefined
     return {
         zip: {
@@ -285,25 +283,19 @@ export function zipExp<Met, Rul, Val>(
     }
 }
 
-export function zipRight<Met, Rul, Val>
-    (gram: Grammar<Met, Rul, Val>, zip: Zip<Met, Rul, Val>, exp0: Exp<Met, Rul, Val>
-    ): { zip: Zip<Met, Rul, Val>, exp: Exp<Met, Rul, Val> } | undefined {
+export function zipRight<Met, Rul, Val>(gram: Grammar<Met, Rul, Val>, zip: Zip<Met, Rul, Val>, exp0: Exp<Met, Rul, Val>): { zip: Zip<Met, Rul, Val>, exp: Exp<Met, Rul, Val> } | undefined {
     const exp1 = zip.kidsRight.get(0)
     if (exp1 === undefined) return undefined
     return { zip: { ...zip, kidsLeft: zip.kidsLeft.unshift(exp0), kidsRight: zip.kidsRight.shift() }, exp: exp1 }
 }
 
-export function zipLeft<Met, Rul, Val>
-    (gram: Grammar<Met, Rul, Val>, zip: Zip<Met, Rul, Val>, exp0: Exp<Met, Rul, Val>
-    ): { zip: Zip<Met, Rul, Val>, exp: Exp<Met, Rul, Val> } | undefined {
+export function zipLeft<Met, Rul, Val>(gram: Grammar<Met, Rul, Val>, zip: Zip<Met, Rul, Val>, exp0: Exp<Met, Rul, Val>): { zip: Zip<Met, Rul, Val>, exp: Exp<Met, Rul, Val> } | undefined {
     const exp1 = zip.kidsLeft.get(0)
     if (exp1 === undefined) return undefined
     return { zip: { ...zip, kidsLeft: zip.kidsLeft.shift(), kidsRight: zip.kidsRight.unshift(exp0) }, exp: exp1 }
 }
 
-export function unzipExp<Met, Rul, Val>
-    (gram: Grammar<Met, Rul, Val>, zip: Zip<Met, Rul, Val>, exp: Exp<Met, Rul, Val>
-    ): Exp<Met, Rul, Val> {
+export function unzipExp<Met, Rul, Val>(gram: Grammar<Met, Rul, Val>, zip: Zip<Met, Rul, Val>, exp: Exp<Met, Rul, Val>): Exp<Met, Rul, Val> {
     const kidMets = gram.kids(zip.rul)
     // verify that exp can fit into zip
     // assert(kidMets[zip.kidsLeft.size] === exp.met)
@@ -318,15 +310,13 @@ export function unzipExp<Met, Rul, Val>
     }
 }
 
-export function unzipsExp<Met, Rul, Val>(
-    gram: Grammar<Met, Rul, Val>, csr: Cursor<Met, Rul, Val>
-): Exp<Met, Rul, Val> {
+export function unzipsExp<Met, Rul, Val>(gram: Grammar<Met, Rul, Val>, csr: Cursor<Met, Rul, Val>): Exp<Met, Rul, Val> {
     const zip = csr.zips.get(0)
     if (zip === undefined) return csr.exp
     return unzipsExp(gram, { zips: csr.zips.shift(), exp: unzipExp(gram, zip, csr.exp) })
 }
 
-export function stepRight<Met, Rul, Val>(gram: Grammar<Met, Rul, Val>, csr0: Cursor<Met, Rul, Val>): Cursor<Met, Rul, Val> | undefined {
+export function stepRightCursor<Met, Rul, Val>(gram: Grammar<Met, Rul, Val>, csr0: Cursor<Met, Rul, Val>): Cursor<Met, Rul, Val> | undefined {
     const zip = csr0.zips.get(0)
     if (zip === undefined) return undefined
     const res = zipRight(gram, zip, csr0.exp)
@@ -334,7 +324,7 @@ export function stepRight<Met, Rul, Val>(gram: Grammar<Met, Rul, Val>, csr0: Cur
     return { zips: csr0.zips.shift().unshift(res.zip), exp: res.exp }
 }
 
-export function stepLeft<Met, Rul, Val>(gram: Grammar<Met, Rul, Val>, csr0: Cursor<Met, Rul, Val>): Cursor<Met, Rul, Val> | undefined {
+export function stepLeftCursor<Met, Rul, Val>(gram: Grammar<Met, Rul, Val>, csr0: Cursor<Met, Rul, Val>): Cursor<Met, Rul, Val> | undefined {
     const zip = csr0.zips.get(0)
     if (zip === undefined) return undefined
     const res = zipLeft(gram, zip, csr0.exp)
@@ -342,31 +332,31 @@ export function stepLeft<Met, Rul, Val>(gram: Grammar<Met, Rul, Val>, csr0: Curs
     return { zips: csr0.zips.shift().unshift(res.zip), exp: res.exp }
 }
 
-export function stepDown<Met, Rul, Val>(gram: Grammar<Met, Rul, Val>, csr0: Cursor<Met, Rul, Val>, i: number): Cursor<Met, Rul, Val> | undefined {
+export function stepDownCursor<Met, Rul, Val>(gram: Grammar<Met, Rul, Val>, csr0: Cursor<Met, Rul, Val>, i: number): Cursor<Met, Rul, Val> | undefined {
     const res = zipExp(gram, csr0.exp, i)
     if (res === undefined) return undefined
     return { zips: csr0.zips.unshift(res.zip), exp: res.exp }
 }
 
-export function stepUp<Met, Rul, Val>(gram: Grammar<Met, Rul, Val>, csr: Cursor<Met, Rul, Val>): Cursor<Met, Rul, Val> | undefined {
+export function stepUpCursor<Met, Rul, Val>(gram: Grammar<Met, Rul, Val>, csr: Cursor<Met, Rul, Val>): Cursor<Met, Rul, Val> | undefined {
     const zip = csr.zips.get(0)
     if (zip === undefined) return undefined
     return { zips: csr.zips.shift(), exp: unzipExp(gram, zip, csr.exp) }
 }
 
-export function stepBotRight<Met, Rul, Val>(gram: Grammar<Met, Rul, Val>, csr0: Cursor<Met, Rul, Val>): Cursor<Met, Rul, Val> | undefined {
+export function stepBotRightCursor<Met, Rul, Val>(gram: Grammar<Met, Rul, Val>, csr0: Cursor<Met, Rul, Val>): Cursor<Met, Rul, Val> | undefined {
     const nKids = gram.kids(csr0.exp.rul).length
     if (nKids === 0) return undefined
-    const csr1 = stepDown(gram, csr0, nKids - 1) as Cursor<Met, Rul, Val>
-    const csr2 = stepBotRight(gram, csr1)
+    const csr1 = stepDownCursor(gram, csr0, nKids - 1) as Cursor<Met, Rul, Val>
+    const csr2 = stepBotRightCursor(gram, csr1)
     return csr2 ?? csr1
 }
 
-export function stepBotLeft<Met, Rul, Val>(gram: Grammar<Met, Rul, Val>, csr0: Cursor<Met, Rul, Val>): Cursor<Met, Rul, Val> | undefined {
+export function stepBotLeftCursor<Met, Rul, Val>(gram: Grammar<Met, Rul, Val>, csr0: Cursor<Met, Rul, Val>): Cursor<Met, Rul, Val> | undefined {
     const nKids = gram.kids(csr0.exp.rul).length
     if (nKids === 0) return undefined
-    const csr1 = stepDown(gram, csr0, 0) as Cursor<Met, Rul, Val>
-    const csr2 = stepBotLeft(gram, csr1)
+    const csr1 = stepDownCursor(gram, csr0, 0) as Cursor<Met, Rul, Val>
+    const csr2 = stepBotLeftCursor(gram, csr1)
     return csr2 ?? csr1
 }
 
@@ -375,10 +365,10 @@ For `moveNext` and `movePrev`, think of it as traversing a path through the
 tree, and stopping at the first that that `isValidCursor`.
 */
 
-export function moveNext<Met, Rul, Val>(lang: Language<Met, Rul, Val>, csr0: Cursor<Met, Rul, Val>): Cursor<Met, Rul, Val> | undefined {
+export function moveNextCursor<Met, Rul, Val>(lang: Language<Met, Rul, Val>, csr0: Cursor<Met, Rul, Val>): Cursor<Met, Rul, Val> | undefined {
     function goUpRight(csr1: Cursor<Met, Rul, Val>): Cursor<Met, Rul, Val> | undefined {
         // try to step right then step bot-left
-        const csr2 = stepRight(lang.grammar, csr1)
+        const csr2 = stepRightCursor(lang.grammar, csr1)
         if (csr2 !== undefined) {
             // if valid, then return here
             if (lang.isValidCursor(csr2)) {
@@ -387,14 +377,14 @@ export function moveNext<Met, Rul, Val>(lang: Language<Met, Rul, Val>, csr0: Cur
         }
 
         // try to step up
-        const csr3 = stepUp(lang.grammar, csr1)
+        const csr3 = stepUpCursor(lang.grammar, csr1)
         if (csr3 === undefined) return undefined
         return goUpRight(csr3)
     }
 
     function goDownRight(csr1: Cursor<Met, Rul, Val>): Cursor<Met, Rul, Val> | undefined {
         for (let i = 0; i < csr1.exp.kids.size; i++) {
-            const csr2 = stepDown(lang.grammar, csr1, i)
+            const csr2 = stepDownCursor(lang.grammar, csr1, i)
             if (csr2 === undefined) continue
             if (!lang.isValidCursor(csr2)) {
                 const csr3 = goDownRight(csr2)
@@ -411,33 +401,33 @@ export function moveNext<Met, Rul, Val>(lang: Language<Met, Rul, Val>, csr0: Cur
 }
 
 
-export function movePrev<Met, Rul, Val>(lang: Language<Met, Rul, Val>, csr0: Cursor<Met, Rul, Val>): Cursor<Met, Rul, Val> | undefined {
+export function movePrevCursor<Met, Rul, Val>(lang: Language<Met, Rul, Val>, csr0: Cursor<Met, Rul, Val>): Cursor<Met, Rul, Val> | undefined {
     function go(csr1: Cursor<Met, Rul, Val>): Cursor<Met, Rul, Val> | undefined {
         // if valid, then return here
         if (lang.isValidCursor(csr1)) return csr1
 
         {
             // try to step left then step bot-right
-            const csr2 = stepRight(lang.grammar, csr1)
+            const csr2 = stepRightCursor(lang.grammar, csr1)
             if (csr2 !== undefined) {
-                const csr3 = stepBotRight(lang.grammar, csr2)
+                const csr3 = stepBotRightCursor(lang.grammar, csr2)
                 if (csr3 !== undefined) return go(csr3)
             }
         } {
             // try to step up
-            const csr3 = stepUp(lang.grammar, csr1)
+            const csr3 = stepUpCursor(lang.grammar, csr1)
             if (csr3 === undefined) return undefined
             return go(csr3)
         }
     }
 
-    const csr1 = stepLeft(lang.grammar, csr0)
+    const csr1 = stepLeftCursor(lang.grammar, csr0)
     if (csr1 === undefined) {
-        const csr2 = stepUp(lang.grammar, csr0)
+        const csr2 = stepUpCursor(lang.grammar, csr0)
         if (csr2 === undefined) return undefined
         return go(csr2)
     }
-    const csr2 = stepBotRight(lang.grammar, csr1)
+    const csr2 = stepBotRightCursor(lang.grammar, csr1)
     if (csr2 === undefined) return go(csr1)
     return go(csr2)
 }

@@ -3,7 +3,7 @@ import { debug } from '../Debug'
 import { EndoPart, EndoReadPart } from '../Endo'
 import { Direction } from './Direction'
 import { Query } from './Editor'
-import { Cursor, Exp, getZipsBot, Grammar, isValidRuleKidI, iZip, Language, makeExpTemplate, makeHole, makeZipTemplates, moveNext, movePrev, Orient, Pre, Select, setZipsBot, toZipsBot, unzipExp, unzipsExp, Zip, zipExp } from './Language'
+import { Cursor, Exp, getZipsBot, Grammar, isValidRuleKidI, iZip, Language, makeExpTemplate, makeHole, makeZipTemplates, moveNextCursor, movePrevCursor, Orient, Pre, Select, setZipsBot, toZipsBot, unzipExp, unzipsExp, Zip, zipExp } from './Language'
 import { ExpNode, Node, NodeStyle } from './Node'
 
 // Env: render environment
@@ -192,13 +192,13 @@ export function moveCursor<Met, Rul, Val>(
             return moveCursor(lang, { case: 'down', i }, cursorPar)
         }
         case 'next': {
-            const cursorNew = moveNext(lang, cursor)
+            const cursorNew = moveNextCursor(lang, cursor)
             return cursorNew !== undefined
                 ? { case: 'cursor', cursor: cursorNew }
                 : undefined
         }
         case 'prev': {
-            const cursorNew = movePrev(lang, cursor)
+            const cursorNew = movePrevCursor(lang, cursor)
             return cursorNew !== undefined
                 ? { case: 'cursor', cursor: cursorNew }
                 : undefined
