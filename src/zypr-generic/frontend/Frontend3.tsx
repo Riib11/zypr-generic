@@ -280,6 +280,9 @@ export default function frontend(backend: Backend<Met, Rul, Val, Dat>) {
       const punc = (name: string, str: string) =>
         [(_: ExpElemPar) => <div className={"node punc punc-" + name}>{str}</div>]
 
+      const symbol = (name: string, str: string) =>
+        [(_: ExpElemPar) => <div className={"node symbol symbol-" + name}>{str}</div>]
+
       switch (node.dat.pre.rul) {
         case 'bnd-ty': {
           const label = (node.dat.pre.val as BndTyVal).label
@@ -311,96 +314,226 @@ export default function frontend(backend: Backend<Met, Rul, Val, Dat>) {
           )
         ]))
         // kd
-        case 'kd # arr': return indent(query([])) // TODO: impl
-        case 'kd # *': return indent(query([])) // TODO: impl
+        case 'kd # arr': return indent(query([
+          renderExp_(node,
+            paren([
+              node.kids[kid_ixs['kd # arr'].dom].map(kid => renderAux(go(kid), classNames.concat(["node-kd-arr-dom"]))),
+              punc("arrow", "→"),
+              node.kids[kid_ixs['kd # arr'].cod].map(kid => renderAux(go(kid), classNames.concat(["node-kd-arr-cod"]))),
+            ].flat()),
+            ["node-kd-arr"]
+          )
+        ]))
+        case 'kd # *': return indent(query([
+          renderExp_(node,
+            paren([
+              symbol("star", "✶")
+            ].flat()),
+            ["node-kd-star"]
+          )
+        ]))
         // ty
-        case 'ty # arr': return indent(query([])) // TODO: impl
-        case 'ty # hol': return indent(query([])) // TODO: impl
-        case 'ty # neu': return indent(query([])) // TODO: impl
+        case 'ty # arr': return indent(query([
+          renderExp_(node,
+            paren([
+              node.kids[kid_ixs['ty # arr'].dom].map(kid => renderAux(go(kid), classNames.concat(["ty-arr-dom"]))),
+              punc("arrow", "→"),
+              node.kids[kid_ixs['ty # arr'].cod].map(kid => renderAux(go(kid), classNames.concat(["ty-arr-cod"]))),
+            ].flat()),
+            ["ty-arr"]
+          )
+        ]))
+        case 'ty # hol': return indent(query([
+          renderExp_(node,
+            paren([
+              symbol("hole", "?")
+            ].flat()),
+            ["ty-hol"]
+          )
+        ]))
+        case 'ty # neu': return indent(query([
+          renderExp_(node,
+            paren([
+              [renderAux([(_) => <span>{node.dat.label?.length === 0 ? "~" : node.dat.label}</span>], classNames.concat(["ty-neu-apl"]))],
+              node.kids[kid_ixs['ty # neu'].args].map(kid => renderAux(go(kid), classNames.concat(["ty-neu-args"]))),
+            ].flat()),
+            ["ty-neu"]
+          )
+        ]))
         // tm
-        case 'tm # app': return indent(query([])) // TODO: impl
-        case 'tm # lam': return indent(query([])) // TODO: impl
-        case 'tm # var': return indent(query([])) // TODO: impl
-        case 'tm # let-tm': return indent(query([])) // TODO: impl
-        case 'tm # dat': return indent(query([])) // TODO: impl
-        case 'tm # let-ty': return indent(query([])) // TODO: impl
-        case 'tm # bou-ty': return indent(query([])) // TODO: impl
-        case 'tm # bou-cx': return indent(query([])) // TODO: impl
-        case 'tm # buf': return indent(query([])) // TODO: impl
-        case 'tm # hol': return indent(query([])) // TODO: impl
+        case 'tm # app': return indent(query([
+          renderExp_(node,
+            paren([
+              node.kids[kid_ixs['tm # app'].apl].map(kid => renderAux(go(kid), classNames.concat(["tm-app-apl"]))),
+              punc("space", " "), // TODO: use application handles style
+              node.kids[kid_ixs['tm # app'].arg].map(kid => renderAux(go(kid), classNames.concat(["tm-app-arg"]))),
+            ].flat()),
+            ["tm-app"]
+          )
+        ]))
+        case 'tm # lam': return indent(query([
+          renderExp_(node,
+            paren([
+              punc("lambda", "λ"),
+              node.kids[kid_ixs['tm # lam'].bnd].map(kid => renderAux(go(kid), classNames.concat(["tm-lam-bnd"]))),
+              punc("colon", ":"),
+              node.kids[kid_ixs['tm # lam'].dom].map(kid => renderAux(go(kid), classNames.concat(["tm-lam-dom"]))),
+              punc("mapsto", "↦"),
+              node.kids[kid_ixs['tm # lam'].bod].map(kid => renderAux(go(kid), classNames.concat(["tm-lam-bod"]))),
+            ].flat()),
+            ["tm-lam"]
+          )
+        ]))
+        case 'tm # var': return indent(query([
+          renderExp_(node,
+            paren([
+              [renderAux([(_) => <span>{node.dat.label?.length === 0 ? "~" : node.dat.label}</span>], classNames.concat(["tm-var-apl"]))],
+            ].flat()),
+            ["tm-var"]
+          )
+        ]))
+        case 'tm # let-tm': return indent(query([
+          renderExp_(node,
+            paren([
+              punc("let", "let"),
+              node.kids[kid_ixs['tm # let-tm'].bnd].map(kid => renderAux(go(kid), classNames.concat(["tm-let-tm-bnd"]))),
+              punc("colon", ":"),
+              node.kids[kid_ixs['tm # let-tm'].sig].map(kid => renderAux(go(kid), classNames.concat(["tm-let-tm-sig"]))),
+              punc("equal", "="),
+              node.kids[kid_ixs['tm # let-tm'].imp].map(kid => renderAux(go(kid), classNames.concat(["tm-let-tm-imp"]))),
+              punc("in", "in"),
+              node.kids[kid_ixs['tm # let-tm'].bod].map(kid => renderAux(go(kid), classNames.concat(["tm-let-tm-bod"]))),
+            ].flat()),
+            ["tm-let-tm"]
+          )
+        ]))
+        case 'tm # dat': return indent(query([
+          renderExp_(node,
+            paren([
+              punc("data", "data"),
+              node.kids[kid_ixs['tm # dat'].bnd].map(kid => renderAux(go(kid), classNames.concat(["tm-dat-bnd"]))),
+              punc("space", " "),
+              node.kids[kid_ixs['tm # dat'].prms].map(kid => renderAux(go(kid), classNames.concat(["tm-dat-prms"]))),
+              punc("equal", "="),
+              node.kids[kid_ixs['tm # dat'].ctrs].map(kid => renderAux(go(kid), classNames.concat(["tm-dat-ctrs"]))),
+              punc("in", "in"),
+              node.kids[kid_ixs['tm # dat'].bod].map(kid => renderAux(go(kid), classNames.concat(["tm-dat-bod"]))),
+            ].flat()),
+            ["tm-lam"]
+          )
+        ]))
+        case 'tm # let-ty': return indent(query([
+          renderExp_(node,
+            paren([
+              punc("type", "type"),
+              node.kids[kid_ixs['tm # let-ty'].bnd].map(kid => renderAux(go(kid), classNames.concat(["tm-let-ty-bnd"]))),
+              punc("space", " "),
+              node.kids[kid_ixs['tm # let-ty'].prms].map(kid => renderAux(go(kid), classNames.concat(["tm-let-ty-prms"]))),
+              punc("equal", "="),
+              node.kids[kid_ixs['tm # let-ty'].imp].map(kid => renderAux(go(kid), classNames.concat(["tm-let-ty-imp"]))),
+              punc("in", "in"),
+              node.kids[kid_ixs['tm # let-ty'].bod].map(kid => renderAux(go(kid), classNames.concat(["tm-let-ty-bod"]))),
+            ].flat()),
+            ["tm-lam"]
+          )
+        ]))
+        case 'tm # bou-ty': return indent(query([
+          renderExp_(node,
+            paren([
+              punc("bou-left", "{"),
+              node.kids[kid_ixs['tm # bou-ty'].bod].map(kid => renderAux(go(kid), classNames.concat(["tm-bou-ty-bod"]))),
+              punc("bou-right", "}"),
+            ].flat()),
+            ["tm-bou-ty"]
+          )
+        ]))
+        case 'tm # bou-cx': return indent(query([
+          renderExp_(node,
+            paren([
+              punc("bou-left", "{"),
+              node.kids[kid_ixs['tm # bou-cx'].bod].map(kid => renderAux(go(kid), classNames.concat(["tm-bou-cx-bod"]))),
+              punc("bou-right", "}"),
+            ].flat()),
+            ["tm-bou-cx"]
+          )
+        ]))
+        case 'tm # buf': return indent(query([
+          renderExp_(node,
+            paren([
+              punc("buf", "buf"),
+              node.kids[kid_ixs['tm # buf'].imp].map(kid => renderAux(go(kid), classNames.concat(["tm-buf-sig"]))),
+              punc("colon", ":"),
+              node.kids[kid_ixs['tm # buf'].sig].map(kid => renderAux(go(kid), classNames.concat(["tm-buf-imp"]))),
+              punc("in", "in"),
+              node.kids[kid_ixs['tm # buf'].bod].map(kid => renderAux(go(kid), classNames.concat(["tm-buf-bod"]))),
+            ].flat()),
+            ["tm-buf"]
+          )
+        ]))
+        case 'tm # hol': return indent(query([
+          renderExp_(node,
+            paren([
+              symbol("hole", "?")
+            ].flat()),
+            ["tm-hol"]
+          )
+        ]))
         // lists
-        case 'bnd-ty list # cons': return indent(query([])) // TODO: impl
-        case 'bnd-ty list # nil': return indent(query([])) // TODO: impl
-        case 'ctr list # cons': return indent(query([])) // TODO: impl
-        case 'ctr list # nil': return indent(query([])) // TODO: impl
-        case 'prm list # cons': return indent(query([])) // TODO: impl
-        case 'prm list # nil': return indent(query([])) // TODO: impl
+        case 'bnd-ty list # cons': return indent(query([
+          renderExp_(node,
+            paren([
+              node.kids[kid_ixs['list # cons'].hd].map(kid => renderAux(go(kid), classNames.concat(["list-cons-hd", "bnd-ty-list-cons-hd"]))),
+              punc("comma", ","),
+              node.kids[kid_ixs['list # cons'].tl].map(kid => renderAux(go(kid), classNames.concat(["list-cons-tl"]))),
+            ].flat()),
+            ["list-cons", "bnd-ty-list-cons"]
+          )
+        ]))
+        case 'bnd-ty list # nil': return indent(query([
+          renderExp_(node,
+            paren([
+              punc("nil", "∅")
+            ].flat()),
+            ["list-nil", "bnd-ty-list-nil"]
+          )
+        ]))
+        case 'ctr list # cons': return indent(query([
+          renderExp_(node,
+            paren([
+              node.kids[kid_ixs['list # cons'].hd].map(kid => renderAux(go(kid), classNames.concat(["list-cons-hd", "ctr-list-cons-hd"]))),
+              punc("comma", ","),
+              node.kids[kid_ixs['list # cons'].tl].map(kid => renderAux(go(kid), classNames.concat(["list-cons-tl", "ctr-list-cons-tl"]))),
+            ].flat()),
+            ["list-cons", "ctr-list-cons"]
+          )
+        ]))
+        case 'ctr list # nil': return indent(query([
+          renderExp_(node,
+            paren([
+              punc("nil", "∅")
+            ].flat()),
+            ["list-nil", "ctr-list-nil"]
+          )
+        ]))
+        case 'prm list # cons': return indent(query([
+          renderExp_(node,
+            paren([
+              node.kids[kid_ixs['list # cons'].hd].map(kid => renderAux(go(kid), classNames.concat(["list-cons-hd", "prm-list-cons-hd"]))),
+              punc("comma", ","),
+              node.kids[kid_ixs['list # cons'].tl].map(kid => renderAux(go(kid), classNames.concat(["list-cons-tl", "prm-list-cons-tl"]))),
+            ].flat()),
+            ["list-cons", "prm-list-cons"]
+          )
+        ]))
+        case 'prm list # nil': return indent(query([
+          renderExp_(node,
+            paren([
+              punc("nil", "∅")
+            ].flat()),
+            ["list-nil", "prm-list-nil"]
+          )
+        ]))
         default: throw new Error("renderNode: unhandled rul '" + node.dat.pre.rul + "'");
-
-        // case 'bnd':
-        //   const label = (node.dat.pre.val as BndVal).label
-        //   return indent(query([
-        //     renderExp_(node,
-        //       [renderAux([(_) => <span>{label.length === 0 ? "~" : label}</span>], classNames.concat(["node-bnd-bnd-label"]))],
-        //       classNames.concat(["node-bnd-bnd"])
-        //     )
-        //   ]))
-
-        // case 'var':
-        //   return indent(query([
-        //     renderExp_(node,
-        //       [renderAux([(_) => <span>{(node.dat.pre.val as VarVal).label}</span>], classNames.concat(["node-exp-var-label"]))],
-        //       classNames.concat(["node-exp-var"])
-        //     )
-        //   ]))
-
-        // case 'app':
-        //   return indent(query([
-        //     renderExp_(node,
-        //       paren([
-        //         node.kids[0].map(kid => renderAux(go(kid), classNames.concat(["node-exp-app-apl"]))),
-        //         [(_: ExpElemPar) => <div className="node punc punc-app">•</div>],
-        //         node.kids[1].map(kid => renderAux(go(kid), classNames.concat(["node-exp-app-arg"]))),
-        //       ].flat()),
-        //       ["node-exp-app"]
-        //     )
-        //   ]))
-
-        // case 'lam':
-        //   return indent(query([
-        //     renderExp_(node,
-        //       paren([
-        //         node.kids[0].map(kid => renderAux(go(kid), classNames.concat(["node-exp-lam-bnd"]))),
-        //         [(_: ExpElemPar) => <div className="node punc punc-mapsto">↦</div>],
-        //         node.kids[1].map(kid => renderAux(go(kid), classNames.concat(["node-exp-lam-bod"]))),
-        //       ].flat()),
-        //       ["node-exp-lam"]
-        //     )
-        //   ]))
-
-        // case 'let':
-        //   return indent(query([
-        //     renderExp_(node,
-        //       paren([
-        //         [(_: ExpElemPar) => <div className="node punc punc-let">let</div>],
-        //         node.kids[0].map(kid => renderAux(go(kid), classNames.concat(["node-exp-let-bnd"]))),
-        //         [(_: ExpElemPar) => <div className="node punc punc-assign">=</div>],
-        //         node.kids[1].map(kid => renderAux(go(kid), classNames.concat(["node-exp-let-imp"]))),
-        //         node.kids[2][0].dat.indent === undefined ? [(_: ExpElemPar) => <div className="node punc punc-in">in</div>] : [],
-        //         node.kids[2].map(kid => renderAux(go(kid), classNames.concat(["node-exp-let-bod"]))),
-        //       ].flat()),
-        //       ["node-exp-lam"]
-        //     )
-        //   ]))
-
-        // case 'hol':
-        //   return indent(query([
-        //     renderExp_(node,
-        //       [(_: ExpElemPar) => <span>?</span>],
-        //       ["node-exp-hol"]
-        //     )
-        //   ]))
-
       }
     }
     return go(node).map(elem => elem(expElemPar))

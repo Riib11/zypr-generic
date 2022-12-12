@@ -15,6 +15,7 @@ export type Dat = {
   pre: Pre,
   indent: number | undefined,
   isParenthesized: boolean,
+  label: string | undefined
 }
 
 export default function backend(language: Language<Met, Rul, Val>): Backend.Backend<Met, Rul, Val, Dat> {
@@ -161,7 +162,8 @@ export default function backend(language: Language<Met, Rul, Val>): Backend.Back
             case 'prm list # cons': return undefined
             case 'prm list # nil': return undefined
           }
-        })()
+        })(),
+        label: "TODO: referenced label"
       },
       kids: kids.map(kid => kid.nodes),
       // TODO: use isValidCursor
@@ -255,7 +257,7 @@ export default function backend(language: Language<Met, Rul, Val>): Backend.Back
           case " ": return makeResult('tm # app')
           case "fun": return makeResult('tm # lam')
           case "let": return makeResult('tm # let-tm')
-          case "let-type": return makeResult('tm # let-ty')
+          case "type": return makeResult('tm # let-ty')
           case "data": return makeResult('tm # dat')
           case "buf": return makeResult('tm # buf')
           default: return { rul: 'tm # var', val: { label: str } }

@@ -107,7 +107,7 @@ export const kid_ixs = {
   // ty
   'ty # arr': { dom: 0, cod: 1 },
   'ty # hol': {},
-  'ty # neu': {},
+  'ty # neu': { args: 0 },
   // tm
   'tm # app': { apl: 0, arg: 1 },
   'tm # lam': { bnd: 0, dom: 1, bod: 2 },
@@ -115,8 +115,8 @@ export const kid_ixs = {
   'tm # let-tm': { bnd: 0, sig: 1, imp: 2, bod: 3 },
   'tm # dat': { bnd: 0, prms: 1, ctrs: 2, bod: 3 },
   'tm # let-ty': { bnd: 0, prms: 1, imp: 2, bod: 3 },
-  'tm # bou-ty': {},
-  'tm # bou-cx': {},
+  'tm # bou-ty': { bod: 0 },
+  'tm # bou-cx': { bod: 0 },
   'tm # buf': { sig: 0, imp: 1, bod: 2 },
   'tm # hol': {},
   // lists
