@@ -286,8 +286,7 @@ export default function backend(language: Language<Met, Rul, Val>): Backend.Back
       }
       default: undefined
     }
-  }
-  )
+  })
 
   function interpretKeyboardCommandEvent(st: Backend.State<Met, Rul, Val, Dat>, event: KeyboardEvent): Backend.Action<Met, Rul, Val> | undefined {
     // edit type bind label
