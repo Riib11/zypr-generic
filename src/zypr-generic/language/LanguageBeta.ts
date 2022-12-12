@@ -96,9 +96,9 @@ export default function language(): Language.Language<Met, Rul, Val> {
     switch (exp.rul) {
       case 'bnd': return false
       case 'var': return false
-      case 'app': return !(isAppApl(zip) || isLetImp(zip) || isLetBod(zip))
+      case 'app': return !(isAppApl(zip) || isLetImp(zip) || isLetBod(zip) || isLamBod(zip))
       case 'lam': return !(isLamBod(zip) || isLetImp(zip) || isLetBod(zip))
-      case 'let': return isAppArg(zip)
+      case 'let': return isAppArg(zip) || isAppApl(zip)
       case 'hol': return false
     }
   }
