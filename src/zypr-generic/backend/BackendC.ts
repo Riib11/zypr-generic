@@ -287,7 +287,7 @@ export default function backend(language: Language<Met, Rul, Val>): Backend.Back
           default: return undefined
         }
       }
-      default: undefined
+      default: return undefined
     }
   })
 
