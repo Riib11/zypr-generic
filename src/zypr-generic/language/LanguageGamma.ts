@@ -45,7 +45,6 @@ export type Rul
   | 'prm list # cons' | 'prm list # nil'
   | 'ty list # cons' | 'ty list # nil'
 
-
 export type Val
   = BndTyVal
   | BndTmVal
@@ -97,29 +96,33 @@ export type TmHolVal = {}
 export type ListConsVal = {}
 export type ListNilVal = {}
 
-// export function isAppApl(zip: Zip | undefined): boolean {
-//   return zip !== undefined && zip.rul === 'app' && zip.kidsLeft.size === 0
-// }
-
-// export function isAppArg(zip: Zip | undefined): boolean {
-//   return zip !== undefined && zip.rul === 'app' && zip.kidsLeft.size === 1
-// }
-
-// export function isLamBnd(zip: Zip | undefined): boolean {
-//   return zip !== undefined && zip.rul === 'lam' && zip.kidsLeft.size === 0
-// }
-
-// export function isLamBod(zip: Zip | undefined): boolean {
-//   return zip !== undefined && zip.rul === 'lam' && zip.kidsLeft.size === 1
-// }
-
-// export function isLetImp(zip: Zip | undefined): boolean {
-//   return zip !== undefined && zip.rul === 'let' && zip.kidsLeft.size === 1
-// }
-
-// export function isLetBod(zip: Zip | undefined): boolean {
-//   return zip !== undefined && zip.rul === 'let' && zip.kidsLeft.size === 2
-// }
+export const kid_ixs = {
+  'bnd-ty': {},
+  'bnd-tm': {},
+  'ctr': {},
+  'prm': { bnd: 0, sig: 1 },
+  // kd
+  'kd # arr': { dom: 0, cod: 1 },
+  'kd # *': {},
+  // ty
+  'ty # arr': { dom: 0, cod: 1 },
+  'ty # hol': {},
+  'ty # neu': {},
+  // tm
+  'tm # app': { apl: 0, arg: 1 },
+  'tm # lam': { bnd: 0, dom: 1, bod: 2 },
+  'tm # var': {},
+  'tm # let-tm': { bnd: 0, sig: 1, imp: 2, bod: 3 },
+  'tm # dat': { bnd: 0, prms: 1, ctrs: 2, bod: 3 },
+  'tm # let-ty': { bnd: 0, prms: 1, imp: 2, bod: 3 },
+  'tm # bou-ty': {},
+  'tm # bou-cx': {},
+  'tm # buf': { sig: 0, imp: 1, bod: 2 },
+  'tm # hol': {},
+  // lists
+  'list # cons': { hd: 0, tl: 1 },
+  'list # nil': {},
+}
 
 // export function prettyPre(pre: Pre): string {
 //   switch (pre.rul) {
@@ -228,9 +231,23 @@ export default function language(): Language.Language<Met, Rul, Val> {
     const zip = zips.get(0)
     if (zip === undefined) return false
     switch (zip.rul) {
+      case 'kd # arr': {
+        switch (exp.rul) {
+          case 'kd # arr': return Language.iZip(zip) === kid_ixs['kd # arr'].dom
+          default: return false
+        }
+      }
+      case 'ty # arr': {
+        switch (exp.rul) {
+          case 'ty # neu': return exp.kids.get(1)?.rul === 'ty list # nil'
+          case 'ty # arr': return Language.iZip(zip) === kid_ixs['ty # arr'].dom
+          default: return false
+        }
+      }
+      case 'prm': return true
       case 'tm # app': {
         switch (exp.rul) {
-          case 'tm # app': return Language.iZip(zip) === 1
+          case 'tm # app': return Language.iZip(zip) === kid_ixs['tm # app'].arg
           case 'tm # buf': return true
           case 'tm # dat': return true
           case 'tm # lam': return true
@@ -307,8 +324,7 @@ export default function language(): Language.Language<Met, Rul, Val> {
 
   function isValidSelect(select: Language.Select<Met, Rul, Val>): boolean {
     // check that the top and bot of select have same met
-    const zipsBot = Language.getZipsBot(select)
-    const preTop = zipsBot.get(-1)
+    const preTop = Language.getZipsBot(select).get(-1)
     if (preTop === undefined) return true
     const preBot = select.exp as Pre
     return preTop.met === preBot.met
