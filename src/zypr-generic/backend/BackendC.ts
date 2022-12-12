@@ -164,12 +164,13 @@ export default function backend(language: Language<Met, Rul, Val>): Backend.Back
         })()
       },
       kids: kids.map(kid => kid.nodes),
-      // NOTE: will still work when eqZips(st.mode.cursor.zips, env.zips)
+      // TODO: use isValidCursor
       getCursor: () => ({ zips: env.zips, exp }),
       isCursorable:
         (st.mode.case === 'cursor' && eqZips(st.mode.cursor.zips, env.zips))
           ? 'same'
           : 'true',
+      // TODO: use isValidSelect
       getSelect: () =>
         select === 'empty' ? 'empty' :
           select,
