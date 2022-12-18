@@ -1,11 +1,7 @@
 import React from 'react'
 import './App.css'
-// import './zypr-generic/frontend/Frontend1.css'
-// import editor from "./zypr-generic/editor/EditorAlphaA1"
-// import './zypr-generic/frontend/Frontend2.css'
-// import editor from './zypr-generic/editor/EditorBetaB2'
-import './zypr-generic/frontend/Frontend3.css'
-import editor from './zypr-generic/editor/EditorGammaC3'
+import { backend } from './zypr-generic/backend/BackendA'
+import frontend from './zypr-generic/frontend/Frontend1'
 
 type Props = {}
 
@@ -21,7 +17,7 @@ export default class App extends React.Component<Props, State> {
     // const Editor = this.state.editor
     return (
       <div className="app">
-        {editor()}
+        {frontend(backend)}
       </div>
     )
   }
